@@ -607,6 +607,7 @@ final class ResearchIslandHostingView: NSHostingView<AnyView> {
 final class ResearchIslandWindowController {
     private static let positionXKey = "YanXu.researchIslandPositionX"
     private static let positionYKey = "YanXu.researchIslandPositionY"
+    private static let positionScreenKey = "YanXu.researchIslandScreen"
 
     private let window: NSWindow
     private let model: ResearchIslandModel
@@ -736,6 +737,10 @@ final class ResearchIslandWindowController {
     }
 
     private func updateMouseRouting() {
+        if dragStart != nil {
+            window.ignoresMouseEvents = false
+            return
+        }
         let cursor = NSEvent.mouseLocation
         window.ignoresMouseEvents = !globalIslandFrame.contains(cursor)
     }
@@ -757,16 +762,27 @@ final class ResearchIslandWindowController {
             dragScreen = window.screen ?? Self.targetScreen()
         }
 
-        guard let dragStart, let screen = dragScreen else { return }
+        guard let dragStart else { return }
         let cursor = NSEvent.mouseLocation
+        let screen = Self.screen(containing: cursor) ?? dragScreen ?? window.screen ?? Self.targetScreen()
+        if let screen, screen !== dragScreen {
+            dragScreen = screen
+            model.update(
+                notch: ResearchIslandNotch.detect(from: screen),
+                availableWidth: min(960, screen.frame.width)
+            )
+        }
         let proposed = NSPoint(
             x: dragStart.windowOrigin.x + cursor.x - dragStart.cursor.x,
             y: dragStart.windowOrigin.y + cursor.y - dragStart.cursor.y
         )
-        window.setFrameOrigin(constrainedOrigin(proposed, on: screen))
-        updateMouseRouting()
+        window.setFrameOrigin(proposed)
 
-        guard ended else { return }
+        guard ended, let screen else {
+            updateMouseRouting()
+            return
+        }
+        window.setFrameOrigin(constrainedOrigin(window.frame.origin, on: screen))
         let anchor = anchorOrigin(on: screen)
         positionOffset = CGSize(
             width: window.frame.origin.x - anchor.x,
@@ -774,15 +790,26 @@ final class ResearchIslandWindowController {
         )
         UserDefaults.standard.set(positionOffset.width, forKey: Self.positionXKey)
         UserDefaults.standard.set(positionOffset.height, forKey: Self.positionYKey)
+        if let identifier = Self.identifier(for: screen) {
+            UserDefaults.standard.set(identifier, forKey: Self.positionScreenKey)
+        }
         self.dragStart = nil
         dragScreen = nil
+        updateMouseRouting()
     }
 
     private func resetPosition() {
         positionOffset = .zero
         UserDefaults.standard.removeObject(forKey: Self.positionXKey)
         UserDefaults.standard.removeObject(forKey: Self.positionYKey)
-        guard let screen = Self.targetScreen() else { return }
+        guard let screen = window.screen ?? Self.targetScreen() else { return }
+        if let identifier = Self.identifier(for: screen) {
+            UserDefaults.standard.set(identifier, forKey: Self.positionScreenKey)
+        }
+        model.update(
+            notch: ResearchIslandNotch.detect(from: screen),
+            availableWidth: min(960, screen.frame.width)
+        )
         window.setFrameOrigin(constrainedOrigin(anchorOrigin(on: screen), on: screen))
         updateMouseRouting()
     }
@@ -848,9 +875,21 @@ final class ResearchIslandWindowController {
     }
 
     private static func targetScreen() -> NSScreen? {
-        NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
+        if let savedIdentifier = UserDefaults.standard.string(forKey: positionScreenKey),
+           let savedScreen = NSScreen.screens.first(where: { identifier(for: $0) == savedIdentifier }) {
+            return savedScreen
+        }
+        return NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 })
             ?? NSScreen.main
             ?? NSScreen.screens.first
+    }
+
+    private static func screen(containing point: NSPoint) -> NSScreen? {
+        NSScreen.screens.first(where: { NSMouseInRect(point, $0.frame, false) })
+    }
+
+    private static func identifier(for screen: NSScreen) -> String? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.stringValue
     }
 
 #if DEBUG
