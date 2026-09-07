@@ -3,9 +3,40 @@ import Foundation
 import SwiftUI
 
 @MainActor
+final class MainWindowCoordinator {
+    static let shared = MainWindowCoordinator()
+
+    private(set) var window: NSWindow?
+
+    private init() {}
+
+    func register(_ window: NSWindow) {
+        self.window = window
+        window.isReleasedWhenClosed = false
+    }
+
+    @discardableResult
+    func show(in application: NSApplication) -> Bool {
+        guard let window else { return false }
+
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
+        application.activate()
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        DispatchQueue.main.async {
+            application.activate()
+            window.makeKeyAndOrderFront(nil)
+        }
+        return true
+    }
+}
+
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: AppStore?
-    private weak var mainWindow: NSWindow?
 
     func configure(store: AppStore) {
         self.store = store
@@ -23,8 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self,
                   let window = self.findMainWindow(in: NSApplication.shared),
                   let visibleFrame = window.screen?.visibleFrame else { return }
-            self.mainWindow = window
-            window.isReleasedWhenClosed = false
+            MainWindowCoordinator.shared.register(window)
             window.setFrame(visibleFrame, display: true, animate: false)
 #if DEBUG
             if let reopenTestPath {
@@ -78,22 +108,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        guard let window = mainWindow ?? findMainWindow(in: sender) else {
-            return true
+        if MainWindowCoordinator.shared.show(in: sender) {
+            return false
         }
 
-        mainWindow = window
-        NSRunningApplication.current.activate(options: [.activateAllWindows])
-        sender.activate()
-        if window.isMiniaturized {
-            window.deminiaturize(nil)
-        }
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-        DispatchQueue.main.async {
-            sender.activate()
-            window.makeKeyAndOrderFront(nil)
-        }
+        guard let window = findMainWindow(in: sender) else { return true }
+        MainWindowCoordinator.shared.register(window)
+        MainWindowCoordinator.shared.show(in: sender)
         return false
     }
 

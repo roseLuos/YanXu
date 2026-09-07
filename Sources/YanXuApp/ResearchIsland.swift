@@ -906,16 +906,8 @@ final class ResearchIslandWindowController {
         withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
             model.setExpanded(false)
         }
-        NSRunningApplication.current.activate(options: [.activateAllWindows])
 
-        if let mainWindow = mainAppWindow {
-            if mainWindow.isMiniaturized {
-                mainWindow.deminiaturize(nil)
-            }
-            mainWindow.makeKeyAndOrderFront(nil)
-            mainWindow.orderFrontRegardless()
-            NSApp.activate()
-        } else {
+        if !MainWindowCoordinator.shared.show(in: NSApp) {
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
             configuration.addsToRecentItems = false
@@ -928,7 +920,7 @@ final class ResearchIslandWindowController {
     }
 
     private var mainAppWindow: NSWindow? {
-        NSApp.windows.first(where: {
+        MainWindowCoordinator.shared.window ?? NSApp.windows.first(where: {
             $0 !== window && !$0.isExcludedFromWindowsMenu && $0.styleMask.contains(.titled)
         }) ?? NSApp.windows.first(where: { $0 !== window && !$0.isExcludedFromWindowsMenu })
     }
