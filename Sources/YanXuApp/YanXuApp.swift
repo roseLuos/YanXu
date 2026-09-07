@@ -1,4 +1,5 @@
 import AppKit
+import Foundation
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -52,7 +53,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct YanXuApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var store = AppStore()
+    @StateObject private var store: AppStore
+
+    init() {
+#if DEBUG
+        let dataPath = ProcessInfo.processInfo.environment["YANXU_DATA_PATH"]
+        let dataURL = dataPath.map { URL(fileURLWithPath: $0) }
+        _store = StateObject(wrappedValue: AppStore(fileURL: dataURL))
+#else
+        _store = StateObject(wrappedValue: AppStore())
+#endif
+    }
 
     var body: some Scene {
         WindowGroup("研序") {

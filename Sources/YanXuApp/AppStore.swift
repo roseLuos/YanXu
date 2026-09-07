@@ -37,8 +37,8 @@ final class AppStore: ObservableObject {
     @Published private(set) var data: AppData {
         didSet {
             persist()
-            refreshWidgetSnapshot()
             if enablesExternalSync {
+                refreshWidgetSnapshot()
                 CalendarSyncManager.shared.dataDidChange(data)
             }
         }
@@ -102,8 +102,8 @@ final class AppStore: ObservableObject {
 #if DEBUG
         if shouldSeedDemo { persist() }
 #endif
-        refreshWidgetSnapshot()
         if enablesExternalSync {
+            refreshWidgetSnapshot()
             NotificationManager.shared.syncAll(initialData.tasks)
             CalendarSyncManager.shared.appDidLoad(data: initialData)
         }
