@@ -350,16 +350,19 @@ struct ResearchIslandRootView: View {
                     Text("本周计划")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(palette.primaryText)
-                    Text("\(Formatters.shortDate.string(from: week.start)) — \(Formatters.shortDate.string(from: finalDay))")
-                        .font(.system(size: 10))
-                        .foregroundStyle(palette.secondaryText)
+                    Button {
+                        model.openApp()
+                    } label: {
+                        Text("\(Formatters.shortDate.string(from: week.start)) — \(Formatters.shortDate.string(from: finalDay))")
+                            .font(.system(size: 10))
+                            .foregroundStyle(palette.secondaryText)
+                    }
+                    .buttonStyle(.plain)
+                    .help("在研序中打开")
                 }
             }
             .contentShape(Rectangle())
-            .gesture(islandDragGesture)
-            .onTapGesture {
-                model.openApp()
-            }
+            .simultaneousGesture(islandDragGesture)
             .contextMenu {
                 Button("回到屏幕顶部") {
                     model.resetPosition()
@@ -533,18 +536,19 @@ private struct IslandDayColumn: View {
 
     var body: some View {
         VStack(spacing: 9) {
-            VStack(spacing: 3) {
-                Text(weekdayText)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(isToday ? Color.yanxuAccent : palette.secondaryText)
-                Text("\(store.calendar.component(.day, from: day))")
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isToday ? Color.white : palette.primaryText.opacity(0.82))
-                    .frame(width: 28, height: 28)
-                    .background(isToday ? Color.yanxuAccent : Color.clear, in: Circle())
+            Button(action: onOpenApp) {
+                VStack(spacing: 3) {
+                    Text(weekdayText)
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(isToday ? Color.yanxuAccent : palette.secondaryText)
+                    Text("\(store.calendar.component(.day, from: day))")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isToday ? Color.white : palette.primaryText.opacity(0.82))
+                        .frame(width: 28, height: 28)
+                        .background(isToday ? Color.yanxuAccent : Color.clear, in: Circle())
+                }
             }
-            .contentShape(Rectangle())
-            .onTapGesture(perform: onOpenApp)
+            .buttonStyle(.plain)
             .help("在研序中打开")
 
             ScrollView(.vertical, showsIndicators: false) {
@@ -752,6 +756,7 @@ final class ResearchIslandWindowController {
 #if DEBUG
         capturePreviewIfRequested()
         captureDemoFramesIfRequested()
+        verifyOpenAppIfRequested()
 #endif
     }
 
@@ -901,15 +906,31 @@ final class ResearchIslandWindowController {
         withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
             model.setExpanded(false)
         }
-        NSApp.activate(ignoringOtherApps: true)
-        guard let mainWindow = NSApp.windows.first(where: {
-            $0 !== window && ($0.contentView?.bounds.width ?? 0) > 800
-        }) else { return }
-        if mainWindow.isMiniaturized {
-            mainWindow.deminiaturize(nil)
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
+
+        if let mainWindow = mainAppWindow {
+            if mainWindow.isMiniaturized {
+                mainWindow.deminiaturize(nil)
+            }
+            mainWindow.makeKeyAndOrderFront(nil)
+            mainWindow.orderFrontRegardless()
+            NSApp.activate()
+        } else {
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            configuration.addsToRecentItems = false
+            NSWorkspace.shared.openApplication(
+                at: Bundle.main.bundleURL,
+                configuration: configuration
+            )
         }
-        mainWindow.makeKeyAndOrderFront(nil)
         updateMouseRouting()
+    }
+
+    private var mainAppWindow: NSWindow? {
+        NSApp.windows.first(where: {
+            $0 !== window && !$0.isExcludedFromWindowsMenu && $0.styleMask.contains(.titled)
+        }) ?? NSApp.windows.first(where: { $0 !== window && !$0.isExcludedFromWindowsMenu })
     }
 
     private func anchorOrigin(on screen: NSScreen) -> NSPoint {
@@ -991,6 +1012,31 @@ final class ResearchIslandWindowController {
     }
 
 #if DEBUG
+    private func verifyOpenAppIfRequested() {
+        let environment = ProcessInfo.processInfo.environment
+        guard let resultPath = environment["YANXU_ISLAND_OPEN_APP_TEST_PATH"] else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            guard let self else { return }
+            let mainWindow = self.mainAppWindow
+            mainWindow?.orderOut(nil)
+            self.model.setExpanded(true)
+            self.model.openApp()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let result: [String: Bool] = [
+                    "appActive": NSApp.isActive,
+                    "mainWindowVisible": mainWindow?.isVisible == true,
+                    "mainWindowKey": mainWindow?.isKeyWindow == true
+                ]
+                if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted]) {
+                    try? data.write(to: URL(fileURLWithPath: resultPath))
+                }
+                NSApp.terminate(nil)
+            }
+        }
+    }
+
     private func captureDemoFramesIfRequested() {
         let environment = ProcessInfo.processInfo.environment
         guard let directoryPath = environment["YANXU_ISLAND_DEMO_FRAMES_DIR"] else { return }
