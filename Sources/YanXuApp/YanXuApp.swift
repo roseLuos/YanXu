@@ -2,7 +2,14 @@ import AppKit
 import Foundation
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    private var store: AppStore?
+
+    func configure(store: AppStore) {
+        self.store = store
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
 #if DEBUG
         let capturePath = ProcessInfo.processInfo.environment["YANXU_CAPTURE_PATH"]
@@ -14,6 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let window = NSApplication.shared.windows.first(where: { ($0.contentView?.bounds.width ?? 0) > 800 }),
                   let visibleFrame = window.screen?.visibleFrame else { return }
             window.setFrame(visibleFrame, display: true, animate: false)
+        }
+
+        if let store {
+            ResearchIslandCoordinator.shared.show(store: store)
         }
 
 #if DEBUG
@@ -48,6 +59,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 #endif
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        ResearchIslandCoordinator.shared.hide()
+    }
 }
 
 @main
@@ -59,10 +74,12 @@ struct YanXuApp: App {
 #if DEBUG
         let dataPath = ProcessInfo.processInfo.environment["YANXU_DATA_PATH"]
         let dataURL = dataPath.map { URL(fileURLWithPath: $0) }
-        _store = StateObject(wrappedValue: AppStore(fileURL: dataURL))
+        let initialStore = AppStore(fileURL: dataURL)
 #else
-        _store = StateObject(wrappedValue: AppStore())
+        let initialStore = AppStore()
 #endif
+        _store = StateObject(wrappedValue: initialStore)
+        appDelegate.configure(store: initialStore)
     }
 
     var body: some Scene {

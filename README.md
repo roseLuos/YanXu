@@ -49,6 +49,9 @@
 - 系统提醒：全天任务当天 09:00、固定任务提前 10 分钟
 - Apple 日历：启动和日程变化后自动增量同步
 - 桌面小组件：今天计划、本周计划和最近 DDL
+- 灵动岛：收起时展示今日科研时长与任务进度，点击展开本周七日计划
+
+灵动岛的顶部悬浮交互受 [CodexIsland](https://github.com/sk-yan/codex-island/tree/feature/remote-claude-life-ledger) 启发，研序使用自己的数据模型和周计划界面重新实现。
 
 ## 快速输入规则
 

@@ -70,6 +70,7 @@ struct ContentView: View {
             Text(store.persistenceError ?? "未知错误")
         }
         .task {
+            ResearchIslandCoordinator.shared.show(store: store)
             await store.refreshCCFDeadlines()
         }
     }
