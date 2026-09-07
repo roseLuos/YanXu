@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var store: AppStore?
+    private weak var mainWindow: NSWindow?
 
     func configure(store: AppStore) {
         self.store = store
@@ -13,14 +14,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
 #if DEBUG
         let capturePath = ProcessInfo.processInfo.environment["YANXU_CAPTURE_PATH"]
+        let reopenTestPath = ProcessInfo.processInfo.environment["YANXU_REOPEN_TEST_PATH"]
 #else
         let capturePath: String? = nil
 #endif
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            guard let window = NSApplication.shared.windows.first(where: { ($0.contentView?.bounds.width ?? 0) > 800 }),
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            guard let self,
+                  let window = self.findMainWindow(in: NSApplication.shared),
                   let visibleFrame = window.screen?.visibleFrame else { return }
+            self.mainWindow = window
+            window.isReleasedWhenClosed = false
             window.setFrame(visibleFrame, display: true, animate: false)
+#if DEBUG
+            if let reopenTestPath {
+                self.verifyWindowReopen(window: window, resultPath: reopenTestPath)
+            }
+#endif
         }
 
         if let store {
@@ -63,6 +73,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         ResearchIslandCoordinator.shared.hide()
     }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        guard let window = mainWindow ?? findMainWindow(in: sender) else {
+            return true
+        }
+
+        mainWindow = window
+        NSRunningApplication.current.activate(options: [.activateAllWindows])
+        sender.activate()
+        if window.isMiniaturized {
+            window.deminiaturize(nil)
+        }
+        window.makeKeyAndOrderFront(nil)
+        window.orderFrontRegardless()
+        DispatchQueue.main.async {
+            sender.activate()
+            window.makeKeyAndOrderFront(nil)
+        }
+        return false
+    }
+
+    private func findMainWindow(in application: NSApplication) -> NSWindow? {
+        application.windows.first {
+            !$0.isExcludedFromWindowsMenu
+                && $0.styleMask.contains(.titled)
+                && ($0.contentView?.bounds.width ?? 0) > 800
+        }
+    }
+
+#if DEBUG
+    private func verifyWindowReopen(window: NSWindow, resultPath: String) {
+        window.performClose(nil)
+        let closedBeforeReopen = !window.isVisible
+        let handledByDelegate = !applicationShouldHandleReopen(
+            NSApplication.shared,
+            hasVisibleWindows: false
+        )
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let result: [String: Bool] = [
+                "appActive": NSApplication.shared.isActive,
+                "closedBeforeReopen": closedBeforeReopen,
+                "handledByDelegate": handledByDelegate,
+                "mainWindowVisible": window.isVisible,
+                "mainWindowKey": window.isKeyWindow
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted]) {
+                try? data.write(to: URL(fileURLWithPath: resultPath))
+            }
+            NSApplication.shared.terminate(nil)
+        }
+    }
+#endif
 }
 
 @main
