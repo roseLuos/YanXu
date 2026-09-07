@@ -2,6 +2,73 @@ import AppKit
 import SwiftUI
 import YanXuCore
 
+enum ResearchIslandAppearance: String {
+    case light
+    case dark
+}
+
+@MainActor
+final class ResearchIslandAppearanceStore: ObservableObject {
+    static let shared = ResearchIslandAppearanceStore()
+    private static let defaultsKey = "YanXu.researchIslandAppearance"
+
+    @Published var mode: ResearchIslandAppearance {
+        didSet {
+            UserDefaults.standard.set(mode.rawValue, forKey: Self.defaultsKey)
+        }
+    }
+
+    private init() {
+        #if DEBUG
+        if let value = ProcessInfo.processInfo.environment["YANXU_ISLAND_APPEARANCE"],
+           let appearance = ResearchIslandAppearance(rawValue: value) {
+            mode = appearance
+            return
+        }
+        #endif
+
+        let savedValue = UserDefaults.standard.string(forKey: Self.defaultsKey)
+        mode = ResearchIslandAppearance(rawValue: savedValue ?? "") ?? .dark
+    }
+
+    func toggle() {
+        mode = mode == .dark ? .light : .dark
+    }
+}
+
+private struct ResearchIslandPalette {
+    let mode: ResearchIslandAppearance
+
+    private var isDark: Bool { mode == .dark }
+
+    var background: Color {
+        isDark
+            ? Color(red: 0.035, green: 0.045, blue: 0.062).opacity(0.97)
+            : Color(red: 0.965, green: 0.975, blue: 0.99).opacity(0.985)
+    }
+
+    var primaryText: Color {
+        isDark ? .white : Color(red: 0.09, green: 0.12, blue: 0.18)
+    }
+
+    var secondaryText: Color { primaryText.opacity(isDark ? 0.52 : 0.58) }
+    var mutedText: Color { primaryText.opacity(isDark ? 0.30 : 0.38) }
+    var border: Color { primaryText.opacity(isDark ? 0.11 : 0.12) }
+    var divider: Color { primaryText.opacity(isDark ? 0.09 : 0.10) }
+    var controlBackground: Color { primaryText.opacity(isDark ? 0.08 : 0.07) }
+    var metricBackground: Color { primaryText.opacity(isDark ? 0.06 : 0.055) }
+    var dayBackground: Color { primaryText.opacity(isDark ? 0.045 : 0.04) }
+    var dayBorder: Color { primaryText.opacity(isDark ? 0.06 : 0.08) }
+    var taskText: Color { primaryText.opacity(isDark ? 0.86 : 0.88) }
+    var completedText: Color { primaryText.opacity(isDark ? 0.36 : 0.40) }
+    var completedStrike: Color { primaryText.opacity(isDark ? 0.28 : 0.30) }
+    var shadow: Color {
+        isDark
+            ? Color.yanxuAccent.opacity(0.20)
+            : Color(red: 0.08, green: 0.15, blue: 0.28).opacity(0.16)
+    }
+}
+
 @MainActor
 final class ResearchIslandModel: ObservableObject {
     enum State {
@@ -105,7 +172,12 @@ private struct ResearchIslandShape: InsettableShape {
 struct ResearchIslandRootView: View {
     @ObservedObject var model: ResearchIslandModel
     @ObservedObject var store: AppStore
+    @ObservedObject private var appearance = ResearchIslandAppearanceStore.shared
     @State private var hovering = false
+
+    private var palette: ResearchIslandPalette {
+        ResearchIslandPalette(mode: appearance.mode)
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -124,15 +196,15 @@ struct ResearchIslandRootView: View {
                 .frame(width: model.size.width, height: model.size.height, alignment: .top)
                 .background {
                     ResearchIslandShape()
-                        .fill(Color(red: 0.035, green: 0.045, blue: 0.062).opacity(0.97))
+                        .fill(palette.background)
                 }
                 .overlay {
                     ResearchIslandShape()
-                        .strokeBorder(Color.white.opacity(model.isExpanded ? 0.14 : 0.08), lineWidth: 0.7)
+                        .strokeBorder(palette.border.opacity(model.isExpanded ? 1 : 0.72), lineWidth: 0.7)
                 }
                 .clipShape(ResearchIslandShape())
                 .shadow(
-                    color: Color.yanxuAccent.opacity(hovering || model.isExpanded ? 0.24 : 0.12),
+                    color: palette.shadow.opacity(hovering || model.isExpanded ? 1 : 0.62),
                     radius: model.isExpanded ? 24 : 12,
                     y: model.isExpanded ? 12 : 4
                 )
@@ -145,6 +217,7 @@ struct ResearchIslandRootView: View {
                     }
                 }
                 .animation(.spring(response: 0.42, dampingFraction: 0.84), value: model.size)
+                .animation(.easeInOut(duration: 0.22), value: appearance.mode)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -189,10 +262,10 @@ struct ResearchIslandRootView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
                     .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.52))
+                    .foregroundStyle(palette.secondaryText)
                 Text(value)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.primaryText)
                     .contentTransition(.numericText())
             }
         }
@@ -207,7 +280,7 @@ struct ResearchIslandRootView: View {
             expandedHeader(now: now)
 
             Rectangle()
-                .fill(Color.white.opacity(0.09))
+                .fill(palette.divider)
                 .frame(height: 1)
 
             weekGrid(now: now)
@@ -234,10 +307,10 @@ struct ResearchIslandRootView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("本周计划")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.primaryText)
                 Text("\(Formatters.shortDate.string(from: week.start)) — \(Formatters.shortDate.string(from: finalDay))")
                     .font(.system(size: 10))
-                    .foregroundStyle(Color.white.opacity(0.48))
+                    .foregroundStyle(palette.secondaryText)
             }
 
             Spacer()
@@ -246,15 +319,30 @@ struct ResearchIslandRootView: View {
             headerMetric(title: "任务完成", value: "\(progress.completed)/\(progress.total)", tint: .yanxuAccent)
 
             Button {
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    appearance.toggle()
+                }
+            } label: {
+                Image(systemName: appearance.mode == .dark ? "sun.max.fill" : "moon.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(appearance.mode == .dark ? Color.orange : Color.yanxuAccent)
+                    .frame(width: 28, height: 28)
+                    .background(palette.controlBackground, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help(appearance.mode == .dark ? "切换到白天模式" : "切换到黑夜模式")
+            .accessibilityLabel(appearance.mode == .dark ? "切换到白天模式" : "切换到黑夜模式")
+
+            Button {
                 withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
                     model.setExpanded(false)
                 }
             } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(Color.white.opacity(0.68))
+                    .foregroundStyle(palette.primaryText.opacity(0.68))
                     .frame(width: 28, height: 28)
-                    .background(Color.white.opacity(0.08), in: Circle())
+                    .background(palette.controlBackground, in: Circle())
             }
             .buttonStyle(.plain)
             .help("收起灵动岛")
@@ -271,15 +359,15 @@ struct ResearchIslandRootView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(0.46))
+                    .foregroundStyle(palette.secondaryText)
                 Text(value)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(palette.primaryText)
             }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .background(Color.white.opacity(0.06), in: Capsule())
+        .background(palette.metricBackground, in: Capsule())
     }
 
     private func weekGrid(now: Date) -> some View {
@@ -294,7 +382,8 @@ struct ResearchIslandRootView: View {
                     day: day,
                     isToday: store.calendar.isDate(day, inSameDayAs: now),
                     occurrences: sortedOccurrences(on: day),
-                    store: store
+                    store: store,
+                    palette: palette
                 )
             }
         }
@@ -333,16 +422,17 @@ private struct IslandDayColumn: View {
     let isToday: Bool
     let occurrences: [TaskOccurrence]
     @ObservedObject var store: AppStore
+    let palette: ResearchIslandPalette
 
     var body: some View {
         VStack(spacing: 9) {
             VStack(spacing: 3) {
                 Text(weekdayText)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(isToday ? Color.yanxuAccent : Color.white.opacity(0.42))
+                    .foregroundStyle(isToday ? Color.yanxuAccent : palette.secondaryText)
                 Text("\(store.calendar.component(.day, from: day))")
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isToday ? .white : Color.white.opacity(0.82))
+                    .foregroundStyle(isToday ? Color.white : palette.primaryText.opacity(0.82))
                     .frame(width: 28, height: 28)
                     .background(isToday ? Color.yanxuAccent : Color.clear, in: Circle())
             }
@@ -352,19 +442,19 @@ private struct IslandDayColumn: View {
                     if occurrences.isEmpty {
                         Text("暂无计划")
                             .font(.system(size: 9))
-                            .foregroundStyle(Color.white.opacity(0.25))
+                            .foregroundStyle(palette.mutedText)
                             .padding(.top, 10)
                     } else {
                         ForEach(occurrences.prefix(8)) { occurrence in
                             if let task = store.task(id: occurrence.taskID) {
-                                IslandTaskRow(task: task, occurrence: occurrence, store: store)
+                                IslandTaskRow(task: task, occurrence: occurrence, store: store, palette: palette)
                             }
                         }
 
                         if occurrences.count > 8 {
                             Text("还有 \(occurrences.count - 8) 项")
                                 .font(.system(size: 8, weight: .medium))
-                                .foregroundStyle(Color.white.opacity(0.38))
+                                .foregroundStyle(palette.secondaryText)
                         }
                     }
                 }
@@ -374,12 +464,12 @@ private struct IslandDayColumn: View {
         .padding(.vertical, 9)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(
-            isToday ? Color.yanxuAccent.opacity(0.12) : Color.white.opacity(0.045),
+            isToday ? Color.yanxuAccent.opacity(0.12) : palette.dayBackground,
             in: RoundedRectangle(cornerRadius: 12, style: .continuous)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isToday ? Color.yanxuAccent.opacity(0.35) : Color.white.opacity(0.06), lineWidth: 0.7)
+                .stroke(isToday ? Color.yanxuAccent.opacity(0.35) : palette.dayBorder, lineWidth: 0.7)
         }
     }
 
@@ -396,6 +486,7 @@ private struct IslandTaskRow: View {
     let task: TodoItem
     let occurrence: TaskOccurrence
     @ObservedObject var store: AppStore
+    let palette: ResearchIslandPalette
 
     var body: some View {
         let completed = task.isCompleted(on: occurrence.date, calendar: store.calendar)
@@ -413,8 +504,8 @@ private struct IslandTaskRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title)
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(Color.white.opacity(completed ? 0.36 : 0.86))
-                    .strikethrough(completed, color: Color.white.opacity(0.28))
+                    .foregroundStyle(completed ? palette.completedText : palette.taskText)
+                    .strikethrough(completed, color: palette.completedStrike)
                     .lineLimit(2)
 
                 if task.scheduleKind == .fixed, let start = task.start {
