@@ -38,6 +38,19 @@ let morning = AttendanceSession(arrivedAt: date(2026, 9, 4, 9), leftAt: date(202
 let afternoon = AttendanceSession(arrivedAt: date(2026, 9, 4, 13), leftAt: date(2026, 9, 4, 18))
 check(abs(morning.duration() + afternoon.duration() - 8 * 60 * 60) < 0.1, "多段打卡必须排除中间休息")
 
+let overnight = AttendanceSession(
+    arrivedAt: date(2026, 9, 5, 16),
+    leftAt: date(2026, 9, 7, 10)
+)
+check(
+    overnight.exceedsContinuousDuration(until: date(2026, 9, 7, 10)),
+    "连续科研超过 8 小时应标记为异常"
+)
+check(
+    !morning.exceedsContinuousDuration(until: date(2026, 9, 4, 12)),
+    "8 小时以内的正常打卡不应警告"
+)
+
 let deadline = DeadlineItem(title: "投稿", dueDate: date(2026, 9, 16))
 check(deadline.remainingDays(from: date(2026, 9, 4), calendar: calendar) == 12, "DDL 应按自然日计算")
 

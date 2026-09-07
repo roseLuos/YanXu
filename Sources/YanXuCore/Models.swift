@@ -182,6 +182,13 @@ public struct AttendanceSession: Identifiable, Codable, Hashable, Sendable {
         max(0, (leftAt ?? now).timeIntervalSince(arrivedAt))
     }
 
+    public func exceedsContinuousDuration(
+        _ threshold: TimeInterval = 8 * 60 * 60,
+        until now: Date = Date()
+    ) -> Bool {
+        duration(until: now) > threshold
+    }
+
     public func overlap(with interval: DateInterval, now: Date = Date()) -> TimeInterval {
         let sessionEnd = leftAt ?? now
         let start = max(arrivedAt, interval.start)

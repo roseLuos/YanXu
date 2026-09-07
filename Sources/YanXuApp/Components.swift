@@ -220,26 +220,39 @@ struct DeadlineCompactCard: View {
 
 struct AttendanceCard: View {
     @EnvironmentObject private var store: AppStore
+    @State private var suspiciousSession: AttendanceSession?
+    @State private var correctionSession: AttendanceSession?
+    @State private var ignoredSessionID: UUID?
+    @State private var showsLongSessionAlert = false
     var embedded = false
+
+    private let warningThreshold: TimeInterval = 8 * 60 * 60
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { timeline in
             let today = DateIntervals.day(containing: timeline.date, calendar: store.calendar)
             let duration = store.attendanceDuration(in: today, now: timeline.date)
+            let activeSession = store.activeAttendanceSession
+            let activeDuration = activeSession?.duration(until: timeline.date) ?? 0
             let cardContent = HStack(spacing: 13) {
-                    Image(systemName: store.activeAttendanceSession == nil ? "building.2" : "location.fill")
+                    Image(systemName: activeSession == nil ? "building.2" : "location.fill")
                         .font(.title2)
-                        .foregroundStyle(Color.yanxuAccent)
+                        .foregroundStyle(activeDuration > warningThreshold ? Color.orange : Color.yanxuAccent)
                         .frame(width: 34, height: 34)
-                        .background(Color.yanxuAccentSoft, in: RoundedRectangle(cornerRadius: 9))
+                        .background(
+                            activeDuration > warningThreshold ? Color.orange.opacity(0.12) : Color.yanxuAccentSoft,
+                            in: RoundedRectangle(cornerRadius: 9)
+                        )
 
                     VStack(alignment: .leading, spacing: 3) {
-                        if let active = store.activeAttendanceSession {
+                        if let active = activeSession {
                             Text("已在实验室 \(Formatters.duration(duration))")
                                 .font(embedded ? .system(size: 18, weight: .semibold) : .headline)
-                            Text("\(Formatters.time.string(from: active.arrivedAt)) 到达 · 今日累计")
+                            Text(activeDuration > warningThreshold
+                                 ? "连续超过 8 小时 · 请检查打卡"
+                                 : "\(Formatters.time.string(from: active.arrivedAt)) 到达 · 今日累计")
                                 .font(.caption)
-                                .foregroundStyle(Color.yanxuMuted)
+                                .foregroundStyle(activeDuration > warningThreshold ? Color.orange : Color.yanxuMuted)
                         } else {
                             Text(duration > 0 ? "今日科研 \(Formatters.duration(duration))" : "尚未到达实验室")
                                 .font(embedded ? .system(size: 18, weight: .semibold) : .headline)
@@ -251,25 +264,139 @@ struct AttendanceCard: View {
 
                     Spacer()
 
-                    Button(store.activeAttendanceSession == nil ? "到达" : "离开") {
-                        if store.activeAttendanceSession == nil {
-                            store.clockIn()
+                    Button(activeSession == nil ? "到达" : "离开") {
+                        if let activeSession {
+                            if activeSession.exceedsContinuousDuration(warningThreshold) {
+                                presentWarning(for: activeSession)
+                            } else {
+                                store.clockOut()
+                            }
                         } else {
-                            store.clockOut()
+                            store.clockIn()
                         }
                     }
                     .buttonStyle(PrimaryActionStyle())
                 }
 
-            if embedded {
-                cardContent
-                    .padding(.vertical, 3)
-            } else {
-                SurfaceCard {
+            Group {
+                if embedded {
                     cardContent
+                        .padding(.vertical, 3)
+                } else {
+                    SurfaceCard {
+                        cardContent
+                    }
+                }
+            }
+            .onAppear {
+                review(activeSession, at: timeline.date)
+            }
+            .onChange(of: timeline.date) { _, newDate in
+                review(store.activeAttendanceSession, at: newDate)
+            }
+            .onChange(of: activeSession?.id) { oldID, newID in
+                if oldID != newID {
+                    ignoredSessionID = nil
+                    review(store.activeAttendanceSession, at: Date())
                 }
             }
         }
+        .alert("连续科研已超过 8 小时", isPresented: $showsLongSessionAlert) {
+            Button("修正离开时间") {
+                let session = suspiciousSession
+                DispatchQueue.main.async {
+                    correctionSession = session
+                }
+            }
+            Button("继续计时", role: .cancel) {
+                ignoredSessionID = suspiciousSession?.id
+            }
+        } message: {
+            if let session = suspiciousSession {
+                Text("你从 \(Formatters.dateTime.string(from: session.arrivedAt)) 开始打卡，可能忘记记录离开时间。请确认这次统计是否正确。")
+            }
+        }
+        .sheet(item: $correctionSession) { session in
+            AttendanceTimeCorrectionView(session: session)
+                .environmentObject(store)
+        }
+    }
+
+    private func review(_ session: AttendanceSession?, at date: Date) {
+        guard let session,
+              session.id != ignoredSessionID,
+              session.exceedsContinuousDuration(warningThreshold, until: date) else { return }
+        presentWarning(for: session)
+    }
+
+    private func presentWarning(for session: AttendanceSession) {
+        suspiciousSession = session
+        showsLongSessionAlert = true
+    }
+}
+
+private struct AttendanceTimeCorrectionView: View {
+    @EnvironmentObject private var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    let session: AttendanceSession
+    @State private var leftAt: Date
+
+    init(session: AttendanceSession) {
+        self.session = session
+        let suggestedEnd = min(Date(), session.arrivedAt.addingTimeInterval(8 * 60 * 60))
+        _leftAt = State(initialValue: suggestedEnd)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("ATTENDANCE CHECK")
+                    .font(.system(size: 9, weight: .medium))
+                    .tracking(2)
+                    .foregroundStyle(Color.orange)
+                Text("修正离开时间")
+                    .font(.system(size: 24, weight: .semibold))
+                    .foregroundStyle(Color.yanxuInk)
+                Text("到达：\(Formatters.dateTime.string(from: session.arrivedAt))")
+                    .font(.caption)
+                    .foregroundStyle(Color.yanxuMuted)
+            }
+
+            HStack {
+                Text("实际离开")
+                    .foregroundStyle(Color.yanxuInk)
+                Spacer()
+                DatePicker(
+                    "实际离开",
+                    selection: $leftAt,
+                    in: session.arrivedAt...Date(),
+                    displayedComponents: [.date, .hourAndMinute]
+                )
+                .labelsHidden()
+            }
+            .padding(15)
+            .background(Color.yanxuRaised, in: RoundedRectangle(cornerRadius: 11))
+
+            Text("保存后，本次科研时长将按你填写的离开时间重新计算。")
+                .font(.caption)
+                .foregroundStyle(Color.yanxuMuted)
+
+            HStack(spacing: 10) {
+                Button("取消") { dismiss() }
+                    .buttonStyle(SecondaryActionStyle())
+                Button("保存修正") {
+                    var corrected = session
+                    corrected.leftAt = max(leftAt, session.arrivedAt)
+                    store.updateAttendance(corrected)
+                    dismiss()
+                }
+                .buttonStyle(PrimaryActionStyle())
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(26)
+        .frame(width: 460)
+        .background(Color.yanxuCard)
     }
 }
 
