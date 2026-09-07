@@ -81,6 +81,8 @@ final class ResearchIslandModel: ObservableObject {
     @Published private(set) var notch: ResearchIslandNotch
 
     private var availableWidth: CGFloat
+    var moveHandler: ((CGSize, Bool) -> Void)?
+    var resetPositionHandler: (() -> Void)?
 
     init(notch: ResearchIslandNotch, availableWidth: CGFloat) {
         self.notch = notch
@@ -101,6 +103,14 @@ final class ResearchIslandModel: ObservableObject {
         self.notch = notch
         self.availableWidth = availableWidth
         recomputeSize()
+    }
+
+    func move(by translation: CGSize, ended: Bool) {
+        moveHandler?(translation, ended)
+    }
+
+    func resetPosition() {
+        resetPositionHandler?()
     }
 
     private func recomputeSize() {
@@ -249,6 +259,13 @@ struct ResearchIslandRootView: View {
         }
         .padding(.horizontal, 10)
         .frame(height: model.size.height)
+        .simultaneousGesture(islandDragGesture)
+        .contextMenu {
+            Button("回到屏幕顶部") {
+                model.resetPosition()
+            }
+        }
+        .help("拖动以移动灵动岛")
         .accessibilityElement(children: .combine)
         .accessibilityLabel("今日科研 \(Formatters.duration(researchDuration))，今日任务完成 \(progress.completed) 项，共 \(progress.total) 项")
     }
@@ -298,20 +315,30 @@ struct ResearchIslandRootView: View {
         let progress = taskProgress(on: now)
 
         return HStack(spacing: 12) {
-            Image(nsImage: NSApplication.shared.applicationIconImage)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: 30, height: 30)
+            HStack(spacing: 10) {
+                Image(nsImage: NSApplication.shared.applicationIconImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("本周计划")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(palette.primaryText)
-                Text("\(Formatters.shortDate.string(from: week.start)) — \(Formatters.shortDate.string(from: finalDay))")
-                    .font(.system(size: 10))
-                    .foregroundStyle(palette.secondaryText)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("本周计划")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(palette.primaryText)
+                    Text("\(Formatters.shortDate.string(from: week.start)) — \(Formatters.shortDate.string(from: finalDay))")
+                        .font(.system(size: 10))
+                        .foregroundStyle(palette.secondaryText)
+                }
             }
+            .contentShape(Rectangle())
+            .gesture(islandDragGesture)
+            .contextMenu {
+                Button("回到屏幕顶部") {
+                    model.resetPosition()
+                }
+            }
+            .help("拖动以移动灵动岛")
 
             Spacer()
 
@@ -349,6 +376,16 @@ struct ResearchIslandRootView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 54)
+    }
+
+    private var islandDragGesture: some Gesture {
+        DragGesture(minimumDistance: 5, coordinateSpace: .global)
+            .onChanged { value in
+                model.move(by: value.translation, ended: false)
+            }
+            .onEnded { value in
+                model.move(by: value.translation, ended: true)
+            }
     }
 
     private func headerMetric(title: String, value: String, tint: Color) -> some View {
@@ -568,15 +605,27 @@ final class ResearchIslandHostingView: NSHostingView<AnyView> {
 
 @MainActor
 final class ResearchIslandWindowController {
+    private static let positionXKey = "YanXu.researchIslandPositionX"
+    private static let positionYKey = "YanXu.researchIslandPositionY"
+
     private let window: NSWindow
     private let model: ResearchIslandModel
     private let host: ResearchIslandHostingView
     private var globalMouseMonitor: Any?
     private var localMouseMonitor: Any?
+    private var globalClickMonitor: Any?
+    private var localClickMonitor: Any?
     private var trackingTimer: Timer?
     private var screenObserver: NSObjectProtocol?
+    private var positionOffset: CGSize
+    private var dragStart: (cursor: NSPoint, windowOrigin: NSPoint)?
+    private var dragScreen: NSScreen?
 
     init(store: AppStore) {
+        positionOffset = CGSize(
+            width: UserDefaults.standard.double(forKey: Self.positionXKey),
+            height: UserDefaults.standard.double(forKey: Self.positionYKey)
+        )
         let screen = Self.targetScreen()
         let hostWidth = min(960, screen?.frame.width ?? 960)
         let hostHeight = min(470, screen?.frame.height ?? 470)
@@ -605,12 +654,20 @@ final class ResearchIslandWindowController {
         host = ResearchIslandHostingView(rootView: AnyView(root), model: model)
         host.autoresizingMask = [.width, .height]
         window.contentView = host
+
+        model.moveHandler = { [weak self] _, ended in
+            self?.moveIsland(ended: ended)
+        }
+        model.resetPositionHandler = { [weak self] in
+            self?.resetPosition()
+        }
     }
 
     func show() {
         reposition()
         window.orderFrontRegardless()
         installMouseTracking()
+        installClickTracking()
         observeScreenChanges()
 #if DEBUG
         capturePreviewIfRequested()
@@ -624,6 +681,8 @@ final class ResearchIslandWindowController {
     deinit {
         if let globalMouseMonitor { NSEvent.removeMonitor(globalMouseMonitor) }
         if let localMouseMonitor { NSEvent.removeMonitor(localMouseMonitor) }
+        if let globalClickMonitor { NSEvent.removeMonitor(globalClickMonitor) }
+        if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         trackingTimer?.invalidate()
     }
@@ -650,18 +709,105 @@ final class ResearchIslandWindowController {
         }
     }
 
+    private func installClickTracking() {
+        guard globalClickMonitor == nil, localClickMonitor == nil else { return }
+        let eventMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown]
+
+        let handleClick: (NSEvent) -> Void = { [weak self] _ in
+            let location = NSEvent.mouseLocation
+            Task { @MainActor in
+                self?.collapseIfClickOutside(at: location)
+            }
+        }
+
+        globalClickMonitor = NSEvent.addGlobalMonitorForEvents(matching: eventMask, handler: handleClick)
+        localClickMonitor = NSEvent.addLocalMonitorForEvents(matching: eventMask) { event in
+            handleClick(event)
+            return event
+        }
+    }
+
+    private func collapseIfClickOutside(at point: NSPoint) {
+        guard model.isExpanded, !globalIslandFrame.contains(point) else { return }
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
+            model.setExpanded(false)
+        }
+        updateMouseRouting()
+    }
+
     private func updateMouseRouting() {
         let cursor = NSEvent.mouseLocation
+        window.ignoresMouseEvents = !globalIslandFrame.contains(cursor)
+    }
+
+    private var globalIslandFrame: NSRect {
         let windowFrame = window.frame
-        let localPoint = NSPoint(x: cursor.x - windowFrame.minX, y: cursor.y - windowFrame.minY)
         let visibleSize = model.size
-        let islandRect = NSRect(
-            x: windowFrame.width / 2 - visibleSize.width / 2,
-            y: windowFrame.height - visibleSize.height,
+        return NSRect(
+            x: windowFrame.minX + (windowFrame.width - visibleSize.width) / 2,
+            y: windowFrame.maxY - visibleSize.height,
             width: visibleSize.width,
             height: visibleSize.height
         )
-        window.ignoresMouseEvents = !islandRect.contains(localPoint)
+    }
+
+    private func moveIsland(ended: Bool) {
+        if dragStart == nil {
+            dragStart = (NSEvent.mouseLocation, window.frame.origin)
+            dragScreen = window.screen ?? Self.targetScreen()
+        }
+
+        guard let dragStart, let screen = dragScreen else { return }
+        let cursor = NSEvent.mouseLocation
+        let proposed = NSPoint(
+            x: dragStart.windowOrigin.x + cursor.x - dragStart.cursor.x,
+            y: dragStart.windowOrigin.y + cursor.y - dragStart.cursor.y
+        )
+        window.setFrameOrigin(constrainedOrigin(proposed, on: screen))
+        updateMouseRouting()
+
+        guard ended else { return }
+        let anchor = anchorOrigin(on: screen)
+        positionOffset = CGSize(
+            width: window.frame.origin.x - anchor.x,
+            height: window.frame.origin.y - anchor.y
+        )
+        UserDefaults.standard.set(positionOffset.width, forKey: Self.positionXKey)
+        UserDefaults.standard.set(positionOffset.height, forKey: Self.positionYKey)
+        self.dragStart = nil
+        dragScreen = nil
+    }
+
+    private func resetPosition() {
+        positionOffset = .zero
+        UserDefaults.standard.removeObject(forKey: Self.positionXKey)
+        UserDefaults.standard.removeObject(forKey: Self.positionYKey)
+        guard let screen = Self.targetScreen() else { return }
+        window.setFrameOrigin(constrainedOrigin(anchorOrigin(on: screen), on: screen))
+        updateMouseRouting()
+    }
+
+    private func anchorOrigin(on screen: NSScreen) -> NSPoint {
+        NSPoint(
+            x: screen.frame.midX - window.frame.width / 2,
+            y: screen.frame.maxY - window.frame.height
+        )
+    }
+
+    private func constrainedOrigin(_ proposed: NSPoint, on screen: NSScreen) -> NSPoint {
+        let localIslandX = (window.frame.width - model.size.width) / 2
+        let localIslandY = window.frame.height - model.size.height
+        let horizontalPadding: CGFloat = 8
+        let verticalPadding: CGFloat = 8
+        let minX = screen.visibleFrame.minX + horizontalPadding - localIslandX
+        let maxX = screen.visibleFrame.maxX - horizontalPadding - localIslandX - model.size.width
+        let minY = screen.visibleFrame.minY + verticalPadding - localIslandY
+        let maxY = screen.frame.maxY - localIslandY - model.size.height
+
+        return NSPoint(
+            x: min(max(proposed.x, minX), maxX),
+            y: min(max(proposed.y, minY), maxY)
+        )
     }
 
     private func observeScreenChanges() {
@@ -683,15 +829,22 @@ final class ResearchIslandWindowController {
             notch: ResearchIslandNotch.detect(from: screen),
             availableWidth: hostWidth
         )
+        let anchor = NSPoint(
+            x: screen.frame.midX - hostWidth / 2,
+            y: screen.frame.maxY - hostHeight
+        )
+        let proposed = NSPoint(
+            x: anchor.x + positionOffset.width,
+            y: anchor.y + positionOffset.height
+        )
         window.setFrame(
             NSRect(
-                x: screen.frame.midX - hostWidth / 2,
-                y: screen.frame.maxY - hostHeight,
-                width: hostWidth,
-                height: hostHeight
+                origin: proposed,
+                size: CGSize(width: hostWidth, height: hostHeight)
             ),
             display: true
         )
+        window.setFrameOrigin(constrainedOrigin(window.frame.origin, on: screen))
     }
 
     private static func targetScreen() -> NSScreen? {
