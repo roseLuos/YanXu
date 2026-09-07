@@ -83,6 +83,7 @@ final class ResearchIslandModel: ObservableObject {
     private var availableWidth: CGFloat
     var moveHandler: ((CGSize, Bool) -> Void)?
     var resetPositionHandler: (() -> Void)?
+    var openAppHandler: (() -> Void)?
 
     init(notch: ResearchIslandNotch, availableWidth: CGFloat) {
         self.notch = notch
@@ -113,11 +114,15 @@ final class ResearchIslandModel: ObservableObject {
         resetPositionHandler?()
     }
 
+    func openApp() {
+        openAppHandler?()
+    }
+
     private func recomputeSize() {
         if isExpanded {
             size = CGSize(
                 width: min(900, max(520, availableWidth - 24)),
-                height: min(430, notch.height + 370)
+                height: min(460, notch.height + 410)
             )
         } else {
             let centerGap = notch.hasNotch ? notch.width : 34
@@ -184,6 +189,19 @@ struct ResearchIslandRootView: View {
     @ObservedObject var store: AppStore
     @ObservedObject private var appearance = ResearchIslandAppearanceStore.shared
     @State private var hovering = false
+    @State private var quickTaskTitle: String
+
+    init(model: ResearchIslandModel, store: AppStore) {
+        self.model = model
+        self.store = store
+#if DEBUG
+        _quickTaskTitle = State(
+            initialValue: ProcessInfo.processInfo.environment["YANXU_ISLAND_DEMO_QUICK_TASK"] ?? ""
+        )
+#else
+        _quickTaskTitle = State(initialValue: "")
+#endif
+    }
 
     private var palette: ResearchIslandPalette {
         ResearchIslandPalette(mode: appearance.mode)
@@ -300,6 +318,12 @@ struct ResearchIslandRootView: View {
                 .fill(palette.divider)
                 .frame(height: 1)
 
+            quickTaskInput
+
+            Rectangle()
+                .fill(palette.divider)
+                .frame(height: 1)
+
             weekGrid(now: now)
                 .padding(.horizontal, 14)
                 .padding(.top, 12)
@@ -333,6 +357,9 @@ struct ResearchIslandRootView: View {
             }
             .contentShape(Rectangle())
             .gesture(islandDragGesture)
+            .onTapGesture {
+                model.openApp()
+            }
             .contextMenu {
                 Button("回到屏幕顶部") {
                     model.resetPosition()
@@ -378,6 +405,47 @@ struct ResearchIslandRootView: View {
         .frame(height: 54)
     }
 
+    private var quickTaskInput: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "plus")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.yanxuAccent)
+
+            TextField(
+                "",
+                text: $quickTaskTitle,
+                prompt: Text("新增任务，如：明天下午 2 点讨论实验")
+                    .foregroundColor(palette.mutedText)
+            )
+            .textFieldStyle(.plain)
+            .font(.system(size: 11))
+            .foregroundStyle(palette.primaryText)
+            .onSubmit(addQuickTask)
+        }
+        .padding(.horizontal, 11)
+        .frame(height: 32)
+        .background(palette.metricBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(palette.border.opacity(0.8), lineWidth: 0.7)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private func addQuickTask() {
+        let input = quickTaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return }
+        let result = QuickTaskParser.parse(input, now: Date(), calendar: store.calendar)
+        store.upsertTask(TodoItem(
+            title: result.title,
+            scheduleKind: result.scheduleKind,
+            start: result.start,
+            reminderEnabled: result.scheduleKind != .inbox
+        ))
+        quickTaskTitle = ""
+    }
+
     private var islandDragGesture: some Gesture {
         DragGesture(minimumDistance: 5, coordinateSpace: .global)
             .onChanged { value in
@@ -420,7 +488,8 @@ struct ResearchIslandRootView: View {
                     isToday: store.calendar.isDate(day, inSameDayAs: now),
                     occurrences: sortedOccurrences(on: day),
                     store: store,
-                    palette: palette
+                    palette: palette,
+                    onOpenApp: model.openApp
                 )
             }
         }
@@ -460,6 +529,7 @@ private struct IslandDayColumn: View {
     let occurrences: [TaskOccurrence]
     @ObservedObject var store: AppStore
     let palette: ResearchIslandPalette
+    let onOpenApp: () -> Void
 
     var body: some View {
         VStack(spacing: 9) {
@@ -473,6 +543,9 @@ private struct IslandDayColumn: View {
                     .frame(width: 28, height: 28)
                     .background(isToday ? Color.yanxuAccent : Color.clear, in: Circle())
             }
+            .contentShape(Rectangle())
+            .onTapGesture(perform: onOpenApp)
+            .help("在研序中打开")
 
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 6) {
@@ -621,6 +694,9 @@ final class ResearchIslandWindowController {
     private var positionOffset: CGSize
     private var dragStart: (cursor: NSPoint, windowOrigin: NSPoint)?
     private var dragScreen: NSScreen?
+#if DEBUG
+    private var demoCaptureTimer: Timer?
+#endif
 
     init(store: AppStore) {
         positionOffset = CGSize(
@@ -662,6 +738,9 @@ final class ResearchIslandWindowController {
         model.resetPositionHandler = { [weak self] in
             self?.resetPosition()
         }
+        model.openAppHandler = { [weak self] in
+            self?.openMainApp()
+        }
     }
 
     func show() {
@@ -672,6 +751,7 @@ final class ResearchIslandWindowController {
         observeScreenChanges()
 #if DEBUG
         capturePreviewIfRequested()
+        captureDemoFramesIfRequested()
 #endif
     }
 
@@ -686,6 +766,9 @@ final class ResearchIslandWindowController {
         if let localClickMonitor { NSEvent.removeMonitor(localClickMonitor) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         trackingTimer?.invalidate()
+#if DEBUG
+        demoCaptureTimer?.invalidate()
+#endif
     }
 
     private func installMouseTracking() {
@@ -814,6 +897,21 @@ final class ResearchIslandWindowController {
         updateMouseRouting()
     }
 
+    private func openMainApp() {
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
+            model.setExpanded(false)
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        guard let mainWindow = NSApp.windows.first(where: {
+            $0 !== window && ($0.contentView?.bounds.width ?? 0) > 800
+        }) else { return }
+        if mainWindow.isMiniaturized {
+            mainWindow.deminiaturize(nil)
+        }
+        mainWindow.makeKeyAndOrderFront(nil)
+        updateMouseRouting()
+    }
+
     private func anchorOrigin(on screen: NSScreen) -> NSPoint {
         NSPoint(
             x: screen.frame.midX - window.frame.width / 2,
@@ -893,6 +991,98 @@ final class ResearchIslandWindowController {
     }
 
 #if DEBUG
+    private func captureDemoFramesIfRequested() {
+        let environment = ProcessInfo.processInfo.environment
+        guard let directoryPath = environment["YANXU_ISLAND_DEMO_FRAMES_DIR"] else { return }
+
+        let directoryURL = URL(fileURLWithPath: directoryPath, isDirectory: true)
+        try? FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        ResearchIslandAppearanceStore.shared.mode = .dark
+        model.setExpanded(false)
+
+        let startedAt = Date()
+        var frameIndex = 0
+        var expandedDark = false
+        var switchedLight = false
+        var switchedDark = false
+        var collapsed = false
+        var finalExpansion = false
+
+        demoCaptureTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 15.0, repeats: true) { [weak self] timer in
+            Task { @MainActor in
+                guard let self else {
+                    timer.invalidate()
+                    return
+                }
+
+                let elapsed = Date().timeIntervalSince(startedAt)
+                if elapsed >= 1.2, !expandedDark {
+                    expandedDark = true
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+                        self.model.setExpanded(true)
+                    }
+                }
+                if elapsed >= 3.8, !switchedLight {
+                    switchedLight = true
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        ResearchIslandAppearanceStore.shared.mode = .light
+                    }
+                }
+                if elapsed >= 6.0, !switchedDark {
+                    switchedDark = true
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        ResearchIslandAppearanceStore.shared.mode = .dark
+                    }
+                }
+                if elapsed >= 7.8, !collapsed {
+                    collapsed = true
+                    withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
+                        self.model.setExpanded(false)
+                    }
+                }
+                if elapsed >= 9.3, !finalExpansion {
+                    finalExpansion = true
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.84)) {
+                        self.model.setExpanded(true)
+                    }
+                }
+
+                self.captureDemoFrame(index: frameIndex, directoryURL: directoryURL)
+                frameIndex += 1
+
+                if elapsed >= 11.0 {
+                    timer.invalidate()
+                    self.demoCaptureTimer = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        NSApp.terminate(nil)
+                    }
+                }
+            }
+        }
+    }
+
+    private func captureDemoFrame(index: Int, directoryURL: URL) {
+        guard let contentView = window.contentView,
+              let bitmap = NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: Int(contentView.bounds.width),
+                pixelsHigh: Int(contentView.bounds.height),
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+              ) else { return }
+        bitmap.size = contentView.bounds.size
+        window.displayIfNeeded()
+        contentView.cacheDisplay(in: contentView.bounds, to: bitmap)
+        guard let data = bitmap.representation(using: .png, properties: [:]) else { return }
+        let frameURL = directoryURL.appendingPathComponent(String(format: "frame-%04d.png", index))
+        try? data.write(to: frameURL)
+    }
+
     private func capturePreviewIfRequested() {
         let environment = ProcessInfo.processInfo.environment
         guard let path = environment["YANXU_ISLAND_CAPTURE_PATH"] else { return }
