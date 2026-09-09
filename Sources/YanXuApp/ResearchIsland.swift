@@ -84,6 +84,7 @@ final class ResearchIslandModel: ObservableObject {
     var moveHandler: ((CGSize, Bool) -> Void)?
     var resetPositionHandler: (() -> Void)?
     var openAppHandler: (() -> Void)?
+    var closeHandler: (() -> Void)?
 
     init(notch: ResearchIslandNotch, availableWidth: CGFloat) {
         self.notch = notch
@@ -116,6 +117,10 @@ final class ResearchIslandModel: ObservableObject {
 
     func openApp() {
         openAppHandler?()
+    }
+
+    func close() {
+        closeHandler?()
     }
 
     private func recomputeSize() {
@@ -282,6 +287,10 @@ struct ResearchIslandRootView: View {
             Button("回到屏幕顶部") {
                 model.resetPosition()
             }
+            Divider()
+            Button("关闭灵动岛", role: .destructive) {
+                model.close()
+            }
         }
         .help("拖动以移动灵动岛")
         .accessibilityElement(children: .combine)
@@ -367,6 +376,10 @@ struct ResearchIslandRootView: View {
                 Button("回到屏幕顶部") {
                     model.resetPosition()
                 }
+                Divider()
+                Button("关闭灵动岛", role: .destructive) {
+                    model.close()
+                }
             }
             .help("拖动以移动灵动岛")
 
@@ -395,7 +408,7 @@ struct ResearchIslandRootView: View {
                     model.setExpanded(false)
                 }
             } label: {
-                Image(systemName: "xmark")
+                Image(systemName: "chevron.up")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(palette.primaryText.opacity(0.68))
                     .frame(width: 28, height: 28)
@@ -403,6 +416,19 @@ struct ResearchIslandRootView: View {
             }
             .buttonStyle(.plain)
             .help("收起灵动岛")
+
+            Button {
+                model.close()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color.yanxuDanger.opacity(0.88))
+                    .frame(width: 28, height: 28)
+                    .background(Color.yanxuDanger.opacity(0.10), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("关闭灵动岛，可在研序顶部重新打开")
+            .accessibilityLabel("关闭灵动岛")
         }
         .padding(.horizontal, 16)
         .frame(height: 54)
@@ -744,6 +770,9 @@ final class ResearchIslandWindowController {
         }
         model.openAppHandler = { [weak self] in
             self?.openMainApp()
+        }
+        model.closeHandler = {
+            ResearchIslandCoordinator.shared.hide()
         }
     }
 
@@ -1147,8 +1176,9 @@ final class ResearchIslandWindowController {
 }
 
 @MainActor
-final class ResearchIslandCoordinator {
+final class ResearchIslandCoordinator: ObservableObject {
     static let shared = ResearchIslandCoordinator()
+    @Published private(set) var isVisible = false
     private var controller: ResearchIslandWindowController?
 
     private init() {}
@@ -1158,10 +1188,12 @@ final class ResearchIslandCoordinator {
             controller = ResearchIslandWindowController(store: store)
         }
         controller?.show()
+        isVisible = true
     }
 
     func hide() {
         controller?.hide()
         controller = nil
+        isVisible = false
     }
 }

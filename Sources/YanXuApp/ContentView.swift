@@ -79,6 +79,7 @@ struct ContentView: View {
 private struct WorkspaceTopBar: View {
     @EnvironmentObject private var store: AppStore
     @ObservedObject private var calendarSync = CalendarSyncManager.shared
+    @ObservedObject private var researchIsland = ResearchIslandCoordinator.shared
 
     let onManageCalendarSync: () -> Void
     let onManageDeadlines: () -> Void
@@ -109,6 +110,20 @@ private struct WorkspaceTopBar: View {
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2, perform: WorkspaceWindowSizing.toggle)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Button {
+                if researchIsland.isVisible {
+                    researchIsland.hide()
+                } else {
+                    researchIsland.show(store: store)
+                }
+            } label: {
+                Label(
+                    researchIsland.isVisible ? "隐藏灵动岛" : "显示灵动岛",
+                    systemImage: researchIsland.isVisible ? "capsule.fill" : "capsule"
+                )
+            }
+            .buttonStyle(WorkspaceHeaderButtonStyle())
 
             Button(action: onManageCalendarSync) {
                 Label(
@@ -213,28 +228,94 @@ private struct WeeklyResearchCard: View {
 
     var body: some View {
         let duration = store.attendanceDuration(in: interval, now: now)
-        let sessions = store.data.attendanceSessions.filter {
+        let overlappingSessions = store.data.attendanceSessions.filter {
             $0.arrivedAt < interval.end && ($0.leftAt ?? now) > interval.start
-        }.count
+        }
+        let earliestArrival = store.data.attendanceSessions
+            .map(\.arrivedAt)
+            .filter(interval.contains)
+            .min { clockTimeValue($0) < clockTimeValue($1) }
+        let latestDeparture = store.data.attendanceSessions
+            .compactMap(\.leftAt)
+            .filter(interval.contains)
+            .max { clockTimeValue($0) < clockTimeValue($1) }
 
         DashboardCard(title: "本周科研时长", icon: "clock.fill", tint: .yanxuAccent) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(Formatters.duration(duration))
-                    .font(.system(size: 29, weight: .bold))
-                    .foregroundStyle(Color.yanxuInk)
-                    .minimumScaleFactor(0.72)
-                    .lineLimit(1)
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(store.activeAttendanceSession == nil ? Color.yanxuMuted : Color.yanxuSuccess)
-                        .frame(width: 6, height: 6)
-                    Text(store.activeAttendanceSession == nil ? "本周 \(sessions) 段记录" : "正在实验室 · 共 \(sessions) 段")
-                        .font(.caption2)
-                        .foregroundStyle(Color.yanxuMuted)
+                HStack(alignment: .lastTextBaseline, spacing: 8) {
+                    Text(Formatters.duration(duration))
+                        .font(.system(size: 29, weight: .bold))
+                        .foregroundStyle(Color.yanxuInk)
+                        .minimumScaleFactor(0.72)
                         .lineLimit(1)
+
+                    Spacer(minLength: 4)
+
+                    HStack(spacing: 5) {
+                        Circle()
+                            .fill(store.activeAttendanceSession == nil ? Color.yanxuMuted : Color.yanxuSuccess)
+                            .frame(width: 6, height: 6)
+                        Text(store.activeAttendanceSession == nil ? "\(overlappingSessions.count) 段" : "记录中 · \(overlappingSessions.count) 段")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(Color.yanxuMuted)
+                            .lineLimit(1)
+                    }
+                }
+
+                HStack(spacing: 7) {
+                    boundaryMetric(
+                        title: "最早到达",
+                        value: earliestArrival.map(Formatters.time.string) ?? "—",
+                        icon: "sunrise.fill",
+                        tint: .yanxuWarning,
+                        date: earliestArrival
+                    )
+                    boundaryMetric(
+                        title: "最晚离开",
+                        value: latestDeparture.map(Formatters.time.string) ?? "—",
+                        icon: "moon.stars.fill",
+                        tint: .yanxuAccent,
+                        date: latestDeparture
+                    )
                 }
             }
         }
+    }
+
+    private func boundaryMetric(
+        title: String,
+        value: String,
+        icon: String,
+        tint: Color,
+        date: Date?
+    ) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 18, height: 18)
+                .background(tint.opacity(0.11), in: Circle())
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundStyle(Color.yanxuMuted)
+                Text(value)
+                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.yanxuInk)
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+        .background(Color.yanxuRaised.opacity(0.78), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
+    }
+
+    private func clockTimeValue(_ date: Date) -> Int {
+        let components = store.calendar.dateComponents([.hour, .minute, .second], from: date)
+        return (components.hour ?? 0) * 3_600
+            + (components.minute ?? 0) * 60
+            + (components.second ?? 0)
     }
 }
 
