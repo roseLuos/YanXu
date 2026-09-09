@@ -302,6 +302,9 @@ struct AttendanceCard: View {
             }
         }
         .alert("连续科研已超过 8 小时", isPresented: $showsLongSessionAlert) {
+            Button("现在离开") {
+                endSuspiciousSessionNow()
+            }
             Button("修正离开时间") {
                 let session = suspiciousSession
                 DispatchQueue.main.async {
@@ -313,7 +316,7 @@ struct AttendanceCard: View {
             }
         } message: {
             if let session = suspiciousSession {
-                Text("你从 \(Formatters.dateTime.string(from: session.arrivedAt)) 开始打卡，可能忘记记录离开时间。请确认这次统计是否正确。")
+                Text("你从 \(Formatters.dateTime.string(from: session.arrivedAt)) 开始打卡，可能忘记记录离开时间。可以现在结束计时，或填写实际离开时间修正统计。")
             }
         }
         .sheet(item: $correctionSession) { session in
@@ -327,6 +330,12 @@ struct AttendanceCard: View {
               session.id != ignoredSessionID,
               session.exceedsContinuousDuration(warningThreshold, until: date) else { return }
         presentWarning(for: session)
+    }
+
+    private func endSuspiciousSessionNow() {
+        store.clockOut()
+        suspiciousSession = nil
+        ignoredSessionID = nil
     }
 
     private func presentWarning(for session: AttendanceSession) {
