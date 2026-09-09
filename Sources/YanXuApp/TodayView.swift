@@ -10,8 +10,6 @@ struct TodayView: View {
     @State private var showsCompleted = false
     @State private var quickTitle: String
 
-    private let today = Date()
-
     init(showsTaskEditor: Binding<Bool>, showsUtilityPanel: Bool = true) {
         _showsTaskEditor = showsTaskEditor
         self.showsUtilityPanel = showsUtilityPanel
@@ -23,10 +21,21 @@ struct TodayView: View {
     }
 
     var body: some View {
-        let groups = todayGroups
+        TimelineView(.periodic(from: .now, by: 60)) { timeline in
+            todayContent(on: timeline.date)
+        }
+        .background(Color.yanxuCard)
+        .sheet(item: $editingTask) { task in
+            TaskEditorView(task: task)
+                .environmentObject(store)
+        }
+    }
+
+    private func todayContent(on today: Date) -> some View {
+        let groups = todayGroups(on: today)
         let total = groups.fixed.count + groups.required.count + groups.available.count + groups.completed.count
 
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text("今天")
@@ -70,11 +79,6 @@ struct TodayView: View {
             } else {
                 taskList(groups)
             }
-        }
-        .background(Color.yanxuCard)
-        .sheet(item: $editingTask) { task in
-            TaskEditorView(task: task)
-                .environmentObject(store)
         }
     }
 
@@ -132,7 +136,7 @@ struct TodayView: View {
         }
     }
 
-    private var todayGroups: TodayGroups {
+    private func todayGroups(on today: Date) -> TodayGroups {
         let dayOccurrences = store.occurrences(on: today)
         let incomplete: (TaskOccurrence) -> Bool = { occurrence in
             store.task(id: occurrence.taskID)?.isCompleted(on: occurrence.date, calendar: store.calendar) == false
