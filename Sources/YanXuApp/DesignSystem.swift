@@ -36,6 +36,7 @@ extension Color {
     static let yanxuDanger = Color.adaptive(light: 0xE05D5D, dark: 0xF18A8A)
     static let yanxuSuccess = Color.adaptive(light: 0x55B987, dark: 0x71D0A1)
     static let yanxuWarning = Color.adaptive(light: 0xE99A45, dark: 0xF0B269)
+    static let yanxuViolet = Color.adaptive(light: 0x8068D8, dark: 0xAA98F0)
     static let yanxuWarningSoft = Color.adaptive(light: 0xFFF5E8, dark: 0x3A2E22)
     static let yanxuNeutralSoft = Color.adaptive(light: 0xF3F5F7, dark: 0x292D34)
     static let yanxuCalendarBlock = Color.adaptive(light: 0xDDE7FF, dark: 0x2B385C)
