@@ -271,7 +271,7 @@ private struct WeeklyResearchCard: View {
                         title: "最早到达",
                         value: earliestArrival.map(Formatters.time.string) ?? "—",
                         icon: "sunrise.fill",
-                        tint: .yanxuWarning,
+                        iconTint: .yanxuArrivalIcon,
                         fill: .yanxuWarningSoft,
                         date: earliestArrival
                     )
@@ -279,7 +279,7 @@ private struct WeeklyResearchCard: View {
                         title: "最晚离开",
                         value: latestDeparture.map(Formatters.time.string) ?? "—",
                         icon: "moon.stars.fill",
-                        tint: .yanxuViolet,
+                        iconTint: .yanxuDepartureIcon,
                         fill: .yanxuVioletSoft,
                         date: latestDeparture
                     )
@@ -287,7 +287,7 @@ private struct WeeklyResearchCard: View {
                         title: "最长单次",
                         value: longestDuration.map(compactDuration) ?? "—",
                         icon: "timer",
-                        tint: .yanxuSuccess,
+                        iconTint: .yanxuDurationIcon,
                         fill: .yanxuSuccessSoft,
                         date: longestSession?.arrivedAt
                     )
@@ -300,21 +300,21 @@ private struct WeeklyResearchCard: View {
         title: String,
         value: String,
         icon: String,
-        tint: Color,
+        iconTint: Color,
         fill: Color,
         date: Date?
     ) -> some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(tint)
+                .foregroundStyle(iconTint)
                 .frame(width: 18, height: 18)
-                .background(tint.opacity(0.18), in: Circle())
+                .background(iconTint.opacity(0.10), in: Circle())
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(tint.opacity(0.92))
+                    .foregroundStyle(Color.yanxuInk.opacity(0.68))
                 Text(value)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.yanxuInk)
@@ -327,7 +327,7 @@ private struct WeeklyResearchCard: View {
         .background(fill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(tint.opacity(0.22), lineWidth: 0.8)
+                .stroke(Color.yanxuBorder.opacity(0.72), lineWidth: 0.8)
         }
         .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
     }
