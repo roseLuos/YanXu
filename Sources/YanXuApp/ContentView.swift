@@ -272,6 +272,7 @@ private struct WeeklyResearchCard: View {
                         value: earliestArrival.map(Formatters.time.string) ?? "—",
                         icon: "sunrise.fill",
                         tint: .yanxuWarning,
+                        fill: .yanxuWarningSoft,
                         date: earliestArrival
                     )
                     boundaryMetric(
@@ -279,6 +280,7 @@ private struct WeeklyResearchCard: View {
                         value: latestDeparture.map(Formatters.time.string) ?? "—",
                         icon: "moon.stars.fill",
                         tint: .yanxuViolet,
+                        fill: .yanxuVioletSoft,
                         date: latestDeparture
                     )
                     boundaryMetric(
@@ -286,6 +288,7 @@ private struct WeeklyResearchCard: View {
                         value: longestDuration.map(compactDuration) ?? "—",
                         icon: "timer",
                         tint: .yanxuSuccess,
+                        fill: .yanxuSuccessSoft,
                         date: longestSession?.arrivedAt
                     )
                 }
@@ -298,6 +301,7 @@ private struct WeeklyResearchCard: View {
         value: String,
         icon: String,
         tint: Color,
+        fill: Color,
         date: Date?
     ) -> some View {
         HStack(spacing: 7) {
@@ -320,17 +324,10 @@ private struct WeeklyResearchCard: View {
         }
         .padding(.horizontal, 7)
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [tint.opacity(0.16), Color.yanxuCard.opacity(0.92)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
-        )
+        .background(fill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(tint.opacity(0.28), lineWidth: 0.8)
+                .stroke(tint.opacity(0.22), lineWidth: 0.8)
         }
         .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
     }
