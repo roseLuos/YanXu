@@ -272,7 +272,6 @@ private struct WeeklyResearchCard: View {
                         value: earliestArrival.map(Formatters.time.string) ?? "—",
                         icon: "sunrise.fill",
                         iconTint: .yanxuArrivalIcon,
-                        fill: .yanxuWarningSoft,
                         date: earliestArrival
                     )
                     boundaryMetric(
@@ -280,7 +279,6 @@ private struct WeeklyResearchCard: View {
                         value: latestDeparture.map(Formatters.time.string) ?? "—",
                         icon: "moon.stars.fill",
                         iconTint: .yanxuDepartureIcon,
-                        fill: .yanxuVioletSoft,
                         date: latestDeparture
                     )
                     boundaryMetric(
@@ -288,7 +286,6 @@ private struct WeeklyResearchCard: View {
                         value: longestDuration.map(compactDuration) ?? "—",
                         icon: "timer",
                         iconTint: .yanxuDurationIcon,
-                        fill: .yanxuSuccessSoft,
                         date: longestSession?.arrivedAt
                     )
                 }
@@ -301,7 +298,6 @@ private struct WeeklyResearchCard: View {
         value: String,
         icon: String,
         iconTint: Color,
-        fill: Color,
         date: Date?
     ) -> some View {
         HStack(spacing: 7) {
@@ -324,7 +320,7 @@ private struct WeeklyResearchCard: View {
         }
         .padding(.horizontal, 7)
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-        .background(fill, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .background(Color.yanxuNeutralSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .stroke(Color.yanxuBorder.opacity(0.72), lineWidth: 0.8)
