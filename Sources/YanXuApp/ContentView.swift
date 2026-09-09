@@ -271,21 +271,21 @@ private struct WeeklyResearchCard: View {
                         title: "最早到达",
                         value: earliestArrival.map(Formatters.time.string) ?? "—",
                         icon: "sunrise.fill",
-                        iconTint: .yanxuArrivalIcon,
+                        iconTint: .yanxuWarning,
                         date: earliestArrival
                     )
                     boundaryMetric(
                         title: "最晚离开",
                         value: latestDeparture.map(Formatters.time.string) ?? "—",
                         icon: "moon.stars.fill",
-                        iconTint: .yanxuDepartureIcon,
+                        iconTint: .yanxuViolet,
                         date: latestDeparture
                     )
                     boundaryMetric(
                         title: "最长单次",
                         value: longestDuration.map(compactDuration) ?? "—",
                         icon: "timer",
-                        iconTint: .yanxuDurationIcon,
+                        iconTint: .yanxuSuccess,
                         date: longestSession?.arrivedAt
                     )
                 }
@@ -310,7 +310,7 @@ private struct WeeklyResearchCard: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(Color.yanxuInk.opacity(0.68))
+                    .foregroundStyle(Color.yanxuInk)
                 Text(value)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.yanxuInk)
@@ -320,10 +320,10 @@ private struct WeeklyResearchCard: View {
         }
         .padding(.horizontal, 7)
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-        .background(Color.yanxuNeutralSoft, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .background(Color.yanxuCard, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .stroke(Color.yanxuBorder.opacity(0.72), lineWidth: 0.8)
+                .stroke(Color.yanxuBorder, lineWidth: 0.8)
         }
         .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
     }
