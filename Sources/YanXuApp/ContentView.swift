@@ -239,6 +239,10 @@ private struct WeeklyResearchCard: View {
             .compactMap(\.leftAt)
             .filter(interval.contains)
             .max { clockTimeValue($0) < clockTimeValue($1) }
+        let longestSession = overlappingSessions.max {
+            $0.overlap(with: interval, now: now) < $1.overlap(with: interval, now: now)
+        }
+        let longestDuration = longestSession?.overlap(with: interval, now: now)
 
         DashboardCard(title: "本周科研时长", icon: "clock.fill", tint: .yanxuAccent) {
             VStack(alignment: .leading, spacing: 8) {
@@ -262,7 +266,7 @@ private struct WeeklyResearchCard: View {
                     }
                 }
 
-                HStack(spacing: 7) {
+                HStack(spacing: 6) {
                     boundaryMetric(
                         title: "最早到达",
                         value: earliestArrival.map(Formatters.time.string) ?? "—",
@@ -274,8 +278,15 @@ private struct WeeklyResearchCard: View {
                         title: "最晚离开",
                         value: latestDeparture.map(Formatters.time.string) ?? "—",
                         icon: "moon.stars.fill",
-                        tint: .yanxuAccent,
+                        tint: .yanxuViolet,
                         date: latestDeparture
+                    )
+                    boundaryMetric(
+                        title: "最长单次",
+                        value: longestDuration.map(compactDuration) ?? "—",
+                        icon: "timer",
+                        tint: .yanxuSuccess,
+                        date: longestSession?.arrivedAt
                     )
                 }
             }
@@ -294,21 +305,44 @@ private struct WeeklyResearchCard: View {
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(tint)
                 .frame(width: 18, height: 18)
-                .background(tint.opacity(0.11), in: Circle())
+                .background(tint.opacity(0.18), in: Circle())
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
                     .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(Color.yanxuMuted)
+                    .foregroundStyle(tint.opacity(0.92))
                 Text(value)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.yanxuInk)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, 7)
         .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-        .background(Color.yanxuRaised.opacity(0.78), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .background(
+            LinearGradient(
+                colors: [tint.opacity(0.16), Color.yanxuCard.opacity(0.92)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 7, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(tint.opacity(0.28), lineWidth: 0.8)
+        }
         .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
+    }
+
+    private func compactDuration(_ duration: TimeInterval) -> String {
+        let totalMinutes = max(0, Int(duration / 60))
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0 {
+            return minutes == 0 ? "\(hours)时" : "\(hours)时\(minutes)分"
+        }
+        return "\(minutes)分"
     }
 
     private func clockTimeValue(_ date: Date) -> Int {
