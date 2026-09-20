@@ -155,7 +155,10 @@ final class AppStore: ObservableObject {
                 var cursor = max(calendar.startOfDay(for: task.start ?? task.createdAt), lookback)
                 while cursor < today {
                     if task.occurs(on: cursor, calendar: calendar), !task.isCompleted(on: cursor, calendar: calendar) {
-                        result.append(TaskOccurrence(taskID: task.id, date: cursor))
+                        let occurrence = TaskOccurrence(taskID: task.id, date: cursor)
+                        if !data.ignoredOverdueOccurrenceKeys.contains(occurrence.id) {
+                            result.append(occurrence)
+                        }
                     }
                     guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
                     cursor = next
@@ -163,11 +166,20 @@ final class AppStore: ObservableObject {
             } else if let dueDate = task.dueDate,
                       calendar.startOfDay(for: dueDate) < today,
                       task.completedAt == nil {
-                result.append(TaskOccurrence(taskID: task.id, date: calendar.startOfDay(for: dueDate)))
+                let occurrence = TaskOccurrence(taskID: task.id, date: calendar.startOfDay(for: dueDate))
+                if !data.ignoredOverdueOccurrenceKeys.contains(occurrence.id) {
+                    result.append(occurrence)
+                }
             }
         }
 
         return result.sorted { $0.date < $1.date }
+    }
+
+    func ignoreOverdueOccurrence(_ occurrence: TaskOccurrence) {
+        var copy = data
+        copy.ignoredOverdueOccurrenceKeys.insert(occurrence.id)
+        data = copy
     }
 
     func toggleTask(id: UUID, occurrenceDate: Date) {

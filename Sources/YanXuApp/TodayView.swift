@@ -187,7 +187,8 @@ struct TodayView: View {
                         occurrence: occurrence,
                         showsDate: showsDate,
                         rowTint: rowTint,
-                        onEdit: { editingTask = store.task(id: occurrence.taskID) }
+                        onEdit: { editingTask = store.task(id: occurrence.taskID) },
+                        onIgnore: title == "已逾期" ? { store.ignoreOverdueOccurrence(occurrence) } : nil
                     )
                     .padding(.horizontal, 12)
                     .padding(.bottom, index < occurrences.count - 1 ? 4 : 0)

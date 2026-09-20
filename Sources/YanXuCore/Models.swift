@@ -203,19 +203,39 @@ public struct AppData: Codable, Sendable {
     public var habits: [Habit]
     public var habitLogs: [HabitLog]
     public var attendanceSessions: [AttendanceSession]
+    /// Occurrences explicitly hidden from the overdue section. The key is
+    /// task ID plus the occurrence date, so recurring tasks can be ignored
+    /// one overdue occurrence at a time.
+    public var ignoredOverdueOccurrenceKeys: Set<String>
 
     public init(
         tasks: [TodoItem] = [],
         deadlines: [DeadlineItem] = [],
         habits: [Habit] = [],
         habitLogs: [HabitLog] = [],
-        attendanceSessions: [AttendanceSession] = []
+        attendanceSessions: [AttendanceSession] = [],
+        ignoredOverdueOccurrenceKeys: Set<String> = []
     ) {
         self.tasks = tasks
         self.deadlines = deadlines
         self.habits = habits
         self.habitLogs = habitLogs
         self.attendanceSessions = attendanceSessions
+        self.ignoredOverdueOccurrenceKeys = ignoredOverdueOccurrenceKeys
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case tasks, deadlines, habits, habitLogs, attendanceSessions, ignoredOverdueOccurrenceKeys
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.tasks = try container.decode([TodoItem].self, forKey: .tasks)
+        self.deadlines = try container.decode([DeadlineItem].self, forKey: .deadlines)
+        self.habits = try container.decode([Habit].self, forKey: .habits)
+        self.habitLogs = try container.decode([HabitLog].self, forKey: .habitLogs)
+        self.attendanceSessions = try container.decode([AttendanceSession].self, forKey: .attendanceSessions)
+        self.ignoredOverdueOccurrenceKeys = try container.decodeIfPresent(Set<String>.self, forKey: .ignoredOverdueOccurrenceKeys) ?? []
     }
 }
 

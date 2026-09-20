@@ -43,6 +43,7 @@ struct TaskRow: View {
     var rowTint: Color = .clear
     var isDeemphasized = false
     var onEdit: (() -> Void)?
+    var onIgnore: (() -> Void)?
 
     private var task: TodoItem? { store.task(id: occurrence.taskID) }
 
@@ -110,7 +111,8 @@ struct TaskRow: View {
                 TaskContextMenuItems(
                     task: task,
                     occurrenceDate: occurrence.date,
-                    onEdit: onEdit
+                    onEdit: onEdit,
+                    onIgnore: onIgnore
                 )
             }
             .opacity(completed ? 0.52 : (isDeemphasized ? 0.74 : 1))
@@ -124,6 +126,7 @@ struct TaskContextMenuItems: View {
     let task: TodoItem
     var occurrenceDate: Date?
     var onEdit: (() -> Void)?
+    var onIgnore: (() -> Void)?
 
     var body: some View {
         let completed = occurrenceDate.map {
@@ -141,6 +144,12 @@ struct TaskContextMenuItems: View {
         if let onEdit {
             Button(action: onEdit) {
                 Label("编辑", systemImage: "pencil")
+            }
+        }
+
+        if let onIgnore {
+            Button(action: onIgnore) {
+                Label("忽略", systemImage: "eye.slash")
             }
         }
 
