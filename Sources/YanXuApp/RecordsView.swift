@@ -18,6 +18,13 @@ private enum DashboardPeriod: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
+private enum MonthChartGranularity: String, CaseIterable, Identifiable {
+    case day = "按日"
+    case week = "按周"
+
+    var id: String { rawValue }
+}
+
 struct RecordsView: View {
     @State private var section: RecordsSection = .dashboard
 
@@ -65,6 +72,7 @@ private struct DashboardView: View {
 
     @State private var period: DashboardPeriod = .week
     @State private var selectedDate = Date()
+    @State private var monthChartGranularity: MonthChartGranularity = .day
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { timeline in
@@ -110,9 +118,13 @@ private struct DashboardView: View {
                     case .day:
                         dailyAttendance(interval: interval, now: timeline.date)
                     case .week:
-                        dailyBarChart(interval: interval, now: timeline.date, title: "每日科研时长")
+                        dailyDurationChart(
+                            points: chartPoints(interval: interval, now: timeline.date),
+                            desiredXCount: 7,
+                            title: "本周每日科研时长"
+                        )
                     case .month:
-                        dailyBarChart(interval: interval, now: timeline.date, title: "本月每日科研时长")
+                        monthDurationChart(interval: interval, now: timeline.date)
                     }
 
                     if !store.data.habits.isEmpty {
@@ -206,25 +218,78 @@ private struct DashboardView: View {
         }
     }
 
-    private func dailyBarChart(interval: DateInterval, now: Date, title: String) -> some View {
-        let points = chartPoints(interval: interval, now: now)
+    private func monthDurationChart(interval: DateInterval, now: Date) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                PageSectionHeader(title: "本月科研时长", detail: monthChartGranularity == .day ? "小时 / 日" : "小时 / 周")
+                Picker("统计粒度", selection: $monthChartGranularity) {
+                    ForEach(MonthChartGranularity.allCases) { item in
+                        Text(item.rawValue).tag(item)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 116)
+            }
+
+            dailyDurationChart(
+                points: monthChartGranularity == .day
+                    ? chartPoints(interval: interval, now: now)
+                    : weeklyChartPoints(interval: interval, now: now),
+                desiredXCount: monthChartGranularity == .day ? 10 : 5,
+                title: ""
+            )
+        }
+    }
+
+    private func dailyDurationChart(
+        points: [DailyHours],
+        desiredXCount: Int,
+        title: String
+    ) -> some View {
         return VStack(alignment: .leading, spacing: 10) {
-            PageSectionHeader(title: title, detail: "小时")
+            if !title.isEmpty {
+                PageSectionHeader(title: title, detail: "小时")
+            }
             SurfaceCard {
                 Chart(points) { point in
-                    BarMark(
+                    LineMark(
                         x: .value("日期", point.date, unit: .day),
                         y: .value("小时", point.hours)
                     )
-                    .foregroundStyle(Color.yanxuAccent.gradient)
-                    .cornerRadius(4)
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(Color.yanxuAccent)
+                    .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+
+                    AreaMark(
+                        x: .value("日期", point.date, unit: .day),
+                        y: .value("小时", point.hours)
+                    )
+                    .interpolationMethod(.catmullRom)
+                    .foregroundStyle(Color.yanxuAccent.opacity(0.12))
+
+                    PointMark(
+                        x: .value("日期", point.date, unit: .day),
+                        y: .value("小时", point.hours)
+                    )
+                    .foregroundStyle(Color.yanxuAccent)
+                    .symbolSize(28)
+                    .annotation(position: .top, spacing: 5) {
+                        Text(formatChartHours(point.hours))
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundStyle(Color.yanxuInk)
+                            .fixedSize()
+                    }
                 }
                 .chartYAxis {
-                    AxisMarks(position: .leading)
+                    AxisMarks(position: .leading) { value in
+                        AxisGridLine().foregroundStyle(Color.yanxuBorder.opacity(0.7))
+                        AxisTick()
+                        AxisValueLabel()
+                    }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: period == .week ? 7 : 10)) { value in
-                        AxisGridLine().foregroundStyle(.clear)
+                    AxisMarks(values: .automatic(desiredCount: desiredXCount)) { value in
+                        AxisGridLine().foregroundStyle(Color.yanxuBorder.opacity(0.35))
                         AxisTick()
                         AxisValueLabel(format: .dateTime.day())
                     }
@@ -234,6 +299,15 @@ private struct DashboardView: View {
         }
     }
 
+    private func formatChartHours(_ hours: Double) -> String {
+        let totalMinutes = Int((hours * 60).rounded())
+        let wholeHours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if wholeHours == 0 { return "\(minutes)m" }
+        if minutes == 0 { return "\(wholeHours)h" }
+        return "\(wholeHours)h\(minutes)m"
+    }
+
     private func chartPoints(interval: DateInterval, now: Date) -> [DailyHours] {
         var cursor = store.calendar.startOfDay(for: interval.start)
         var points: [DailyHours] = []
@@ -241,6 +315,20 @@ private struct DashboardView: View {
             let day = DateIntervals.day(containing: cursor, calendar: store.calendar)
             points.append(DailyHours(date: cursor, hours: store.attendanceDuration(in: day, now: now) / 3600))
             cursor = store.calendar.date(byAdding: .day, value: 1, to: cursor) ?? interval.end
+        }
+        return points
+    }
+
+    private func weeklyChartPoints(interval: DateInterval, now: Date) -> [DailyHours] {
+        var cursor = store.calendar.startOfDay(for: interval.start)
+        var points: [DailyHours] = []
+        while cursor < interval.end {
+            let calendarWeek = DateIntervals.week(containing: cursor, calendar: store.calendar)
+            let bucketStart = max(interval.start, calendarWeek.start)
+            let bucketEnd = min(interval.end, calendarWeek.end)
+            let bucket = DateInterval(start: bucketStart, end: bucketEnd)
+            points.append(DailyHours(date: bucketStart, hours: store.attendanceDuration(in: bucket, now: now) / 3600))
+            cursor = bucketEnd
         }
         return points
     }
@@ -271,11 +359,11 @@ private struct MetricCard: View {
                 Text(value)
                     .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(Color.yanxuInk)
-                if let detail {
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(Color.yanxuMuted)
-                }
+                Text(detail ?? "占位")
+                    .font(.caption)
+                    .foregroundStyle(Color.yanxuMuted)
+                    .opacity(detail == nil ? 0 : 1)
+                    .accessibilityHidden(detail == nil)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
