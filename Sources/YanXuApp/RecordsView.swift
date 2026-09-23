@@ -516,7 +516,7 @@ private struct AttendanceHistoryView: View {
                 if sessions.isEmpty {
                     EmptyState(icon: "building.2", title: "还没有打卡记录", message: "到达和离开实验室时各点击一次即可。")
                 } else {
-                    PageSectionHeader(title: "全部记录", detail: "双击编辑")
+                    PageSectionHeader(title: "全部记录", detail: "可修改到达和离开时间")
                     SurfaceCard {
                         VStack(spacing: 0) {
                             ForEach(Array(sessions.enumerated()), id: \.element.id) { index, session in
@@ -533,6 +533,18 @@ private struct AttendanceHistoryView: View {
                                         Text(Formatters.duration(session.duration(until: timeline.date)))
                                             .foregroundStyle(Color.yanxuMuted)
                                     }
+                                    Button {
+                                        editingSession = session
+                                    } label: {
+                                        Label("编辑", systemImage: "pencil")
+                                            .font(.caption.weight(.medium))
+                                            .foregroundStyle(Color.yanxuAccent)
+                                            .padding(.horizontal, 9)
+                                            .frame(height: 28)
+                                            .background(Color.yanxuAccentSoft, in: RoundedRectangle(cornerRadius: 7))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help("修改到达和离开时间")
                                 }
                                 .padding(.vertical, 10)
                                 .contentShape(Rectangle())
