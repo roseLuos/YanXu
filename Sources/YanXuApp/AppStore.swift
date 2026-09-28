@@ -23,6 +23,7 @@ struct DeadlinePreview: Identifiable {
     let title: String
     let dueDate: Date
     let includesTime: Bool
+    let kind: DeadlineKind
     let sourceLabel: String?
     let sourceURL: URL?
 }
@@ -47,6 +48,9 @@ final class AppStore: ObservableObject {
     @Published private(set) var ccfDeadlines: [CCFDeadline] = []
     @Published private(set) var ccfDeadlineLoadState: CCFDeadlineLoadState = .idle
     @Published private(set) var ccfDeadlineUpdatedAt: Date?
+    @Published private(set) var ignoredCCFDeadlineIDs: Set<String> = Set(
+        UserDefaults.standard.stringArray(forKey: "yanxu.ignored-ccf-deadline-ids") ?? []
+    )
 
     let calendar: Calendar
     private let fileURL: URL
@@ -315,34 +319,81 @@ final class AppStore: ObservableObject {
         data = copy
     }
 
+    func ignoreDeadline(id: UUID) {
+        guard let index = data.deadlines.firstIndex(where: { $0.id == id }) else { return }
+        var copy = data
+        copy.deadlines[index].isIgnored = true
+        data = copy
+    }
+
+    func ignoreCCFDeadline(id: String) {
+        ignoredCCFDeadlineIDs.insert(id)
+        UserDefaults.standard.set(Array(ignoredCCFDeadlineIDs), forKey: "yanxu.ignored-ccf-deadline-ids")
+        refreshWidgetSnapshot()
+    }
+
+    func ignoreDeadlinePreview(_ preview: DeadlinePreview) {
+        if preview.id.hasPrefix("personal-"),
+           let id = UUID(uuidString: String(preview.id.dropFirst("personal-".count))) {
+            ignoreDeadline(id: id)
+        } else if preview.id.hasPrefix("ccf-") {
+            ignoreCCFDeadline(id: String(preview.id.dropFirst("ccf-".count)))
+        }
+    }
+
+    var personalMilestoneItems: [DeadlineItem] {
+        let today = calendar.startOfDay(for: Date())
+        return data.deadlines
+            .filter { !$0.isIgnored }
+            .sorted {
+                let lhsDistance = abs(calendar.dateComponents([.day], from: today, to: calendar.startOfDay(for: $0.dueDate)).day ?? 0)
+                let rhsDistance = abs(calendar.dateComponents([.day], from: today, to: calendar.startOfDay(for: $1.dueDate)).day ?? 0)
+                if lhsDistance == rhsDistance { return $0.dueDate < $1.dueDate }
+                return lhsDistance < rhsDistance
+            }
+    }
+
     var activeDeadlines: [DeadlineItem] {
         let today = calendar.startOfDay(for: Date())
         return data.deadlines
-            .filter { calendar.startOfDay(for: $0.dueDate) >= today }
+            .filter { !$0.isIgnored && $0.kind == .deadline && calendar.startOfDay(for: $0.dueDate) >= today }
             .sorted { $0.dueDate < $1.dueDate }
     }
 
     var archivedDeadlines: [DeadlineItem] {
         let today = calendar.startOfDay(for: Date())
         return data.deadlines
-            .filter { calendar.startOfDay(for: $0.dueDate) < today }
+            .filter { !$0.isIgnored && $0.kind == .deadline && calendar.startOfDay(for: $0.dueDate) < today }
             .sorted { $0.dueDate > $1.dueDate }
     }
 
     var upcomingCCFDeadlines: [CCFDeadline] {
         let now = Date()
         return ccfDeadlines
-            .filter { $0.dueDate >= now }
+            .filter { $0.dueDate >= now && !ignoredCCFDeadlineIDs.contains($0.id) }
             .sorted { $0.dueDate < $1.dueDate }
     }
 
+    var displayedCCFDeadlines: [CCFDeadline] {
+        let cutoff = calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        return ccfDeadlines
+            .filter { $0.dueDate >= cutoff && !ignoredCCFDeadlineIDs.contains($0.id) }
+            .sorted {
+                let lhs = abs($0.dueDate.timeIntervalSinceNow)
+                let rhs = abs($1.dueDate.timeIntervalSinceNow)
+                if lhs == rhs { return $0.dueDate < $1.dueDate }
+                return lhs < rhs
+            }
+    }
+
     var personalDeadlinePreviews: [DeadlinePreview] {
-        activeDeadlines.map {
+        personalMilestoneItems.map {
             DeadlinePreview(
                 id: "personal-\($0.id.uuidString)",
                 title: $0.title,
                 dueDate: $0.dueDate,
                 includesTime: $0.includesTime,
+                kind: $0.kind,
                 sourceLabel: nil,
                 sourceURL: nil
             )
@@ -350,12 +401,13 @@ final class AppStore: ObservableObject {
     }
 
     var ccfDeadlinePreviews: [DeadlinePreview] {
-        upcomingCCFDeadlines.map {
+        displayedCCFDeadlines.map {
             DeadlinePreview(
                 id: "ccf-\($0.id)",
                 title: $0.title,
                 dueDate: $0.dueDate,
                 includesTime: true,
+                kind: .deadline,
                 sourceLabel: "CCF A · AI",
                 sourceURL: $0.conferenceURL
             )
@@ -364,7 +416,12 @@ final class AppStore: ObservableObject {
 
     var deadlinePreviews: [DeadlinePreview] {
         (personalDeadlinePreviews + ccfDeadlinePreviews)
-            .sorted { $0.dueDate < $1.dueDate }
+            .sorted {
+                let lhs = abs($0.dueDate.timeIntervalSinceNow)
+                let rhs = abs($1.dueDate.timeIntervalSinceNow)
+                if lhs == rhs { return $0.dueDate < $1.dueDate }
+                return lhs < rhs
+            }
     }
 
     func refreshCCFDeadlines() async {

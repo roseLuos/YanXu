@@ -327,14 +327,14 @@ struct TodayUtilityPanel: View {
                     }
                 }
 
-                UtilityModule(title: "最近 DDL", icon: "timer") {
+                UtilityModule(title: "里程碑", icon: "flag.fill") {
                     VStack(alignment: .leading, spacing: 14) {
-                        deadlineGroupTitle("我的 DDL", count: min(2, store.personalDeadlinePreviews.count))
+                        deadlineGroupTitle("我的里程碑", count: min(3, store.personalDeadlinePreviews.count))
                         if store.personalDeadlinePreviews.isEmpty {
-                            utilityEmpty("还没有自己添加的 DDL")
+                            utilityEmpty("还没有自己添加的里程碑")
                         } else {
                             VStack(spacing: 9) {
-                                ForEach(store.personalDeadlinePreviews.prefix(2)) { deadline in
+                                ForEach(store.personalDeadlinePreviews.prefix(3)) { deadline in
                                     DeadlineCompactCard(deadline: deadline)
                                 }
                             }

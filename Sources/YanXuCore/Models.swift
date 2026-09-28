@@ -113,31 +113,66 @@ public struct TodoItem: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+public enum DeadlineKind: String, Codable, CaseIterable, Identifiable, Sendable {
+    case deadline
+    case milestone
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .deadline: "DDL"
+        case .milestone: "正向里程碑"
+        }
+    }
+}
+
 public struct DeadlineItem: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
     public var title: String
     public var dueDate: Date
     public var includesTime: Bool
     public var createdAt: Date
+    public var kind: DeadlineKind
+    public var isIgnored: Bool
 
     public init(
         id: UUID = UUID(),
         title: String,
         dueDate: Date,
         includesTime: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        kind: DeadlineKind = .deadline,
+        isIgnored: Bool = false
     ) {
         self.id = id
         self.title = title
         self.dueDate = dueDate
         self.includesTime = includesTime
         self.createdAt = createdAt
+        self.kind = kind
+        self.isIgnored = isIgnored
     }
 
     public func remainingDays(from date: Date = Date(), calendar: Calendar = .current) -> Int {
         let start = calendar.startOfDay(for: date)
         let due = calendar.startOfDay(for: dueDate)
         return calendar.dateComponents([.day], from: start, to: due).day ?? 0
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, dueDate, includesTime, createdAt, kind, isIgnored
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.dueDate = try container.decode(Date.self, forKey: .dueDate)
+        self.includesTime = try container.decode(Bool.self, forKey: .includesTime)
+        self.createdAt = try container.decode(Date.self, forKey: .createdAt)
+        self.kind = try container.decodeIfPresent(DeadlineKind.self, forKey: .kind) ?? .deadline
+        self.isIgnored = try container.decodeIfPresent(Bool.self, forKey: .isIgnored) ?? false
     }
 }
 

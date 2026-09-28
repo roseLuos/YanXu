@@ -185,6 +185,14 @@ struct DeadlineCompactCard: View {
                     Text(deadline.includesTime ? Formatters.dateTime.string(from: deadline.dueDate) : Formatters.shortDate.string(from: deadline.dueDate))
                         .font(.system(size: 9))
                         .foregroundStyle(Color.yanxuMuted)
+                if deadline.kind == .milestone {
+                    Text("里程碑")
+                            .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(Color.yanxuAccentStrong)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                        .background(Color.yanxuAccentSoft, in: Capsule())
+                    }
                 if let sourceLabel = deadline.sourceLabel {
                     Text(sourceLabel)
                             .font(.system(size: 8, weight: .semibold))
@@ -198,11 +206,18 @@ struct DeadlineCompactCard: View {
 
             Spacer(minLength: 4)
 
-            HStack(alignment: .lastTextBaseline, spacing: 3) {
-                Text(days == 0 ? "今天" : "\(days)")
-                    .font(.system(size: days == 0 ? 16 : 23, weight: .semibold))
+            if days == 0 {
+                Text("今天")
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.yanxuAccent)
-                if days != 0 {
+            } else {
+                HStack(alignment: .lastTextBaseline, spacing: 3) {
+                    Text(days < 0 ? "已经" : "还有")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(Color.yanxuMuted)
+                    Text("\(abs(days))")
+                        .font(.system(size: 23, weight: .semibold))
+                        .foregroundStyle(Color.yanxuAccent)
                     Text("天")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Color.yanxuAccent)
@@ -221,6 +236,13 @@ struct DeadlineCompactCard: View {
         .onTapGesture {
             if let sourceURL = deadline.sourceURL {
                 openURL(sourceURL)
+            }
+        }
+        .contextMenu {
+            Button {
+                store.ignoreDeadlinePreview(deadline)
+            } label: {
+                Label("忽略", systemImage: "eye.slash")
             }
         }
         .help(deadline.sourceURL == nil ? deadline.title : "打开会议官网")

@@ -233,7 +233,7 @@ private struct DayTaskList: View {
 
     private var deadlines: [DeadlineItem] {
         store.data.deadlines
-            .filter { store.calendar.isDate($0.dueDate, inSameDayAs: day) }
+            .filter { !$0.isIgnored && store.calendar.isDate($0.dueDate, inSameDayAs: day) }
             .sorted { $0.dueDate < $1.dueDate }
     }
 
@@ -267,10 +267,10 @@ private struct DayTaskList: View {
 
                     if !deadlines.isEmpty {
                         VStack(alignment: .leading, spacing: 0) {
-                            CalendarSectionTitle(title: "DDL", count: deadlines.count)
+                            CalendarSectionTitle(title: "里程碑", count: deadlines.count)
                             ForEach(deadlines) { deadline in
                                 HStack(spacing: 12) {
-                                    Image(systemName: "timer")
+                                    Image(systemName: deadline.kind == .milestone ? "flag.fill" : "timer")
                                         .font(.system(size: 14))
                                         .foregroundStyle(Color.yanxuDanger)
                                         .frame(width: 20)
@@ -278,7 +278,11 @@ private struct DayTaskList: View {
                                         .font(.system(size: 14, weight: .medium))
                                         .foregroundStyle(Color.yanxuInk)
                                     Spacer()
-                                    Text(deadline.includesTime ? Formatters.time.string(from: deadline.dueDate) : "截止")
+                                    Text(
+                                        deadline.includesTime
+                                            ? Formatters.time.string(from: deadline.dueDate)
+                                            : (deadline.kind == .milestone ? "起始" : "截止")
+                                    )
                                         .font(.caption)
                                         .foregroundStyle(Color.yanxuMuted)
                                 }

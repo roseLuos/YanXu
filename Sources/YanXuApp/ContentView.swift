@@ -46,7 +46,7 @@ struct ContentView: View {
                 .environmentObject(store)
         }
         .sheet(isPresented: $showsDeadlineManager) {
-            WorkspaceManagementSheet(title: "DDL 管理") {
+            WorkspaceManagementSheet(title: "里程碑管理") {
                 DeadlineBoardView()
             }
             .environmentObject(store)
@@ -134,7 +134,7 @@ private struct WorkspaceTopBar: View {
             .buttonStyle(WorkspaceHeaderButtonStyle())
 
             Button(action: onManageDeadlines) {
-                Label("DDL · \(store.deadlinePreviews.count)", systemImage: "timer")
+                Label("里程碑 · \(store.deadlinePreviews.count)", systemImage: "flag.fill")
             }
             .buttonStyle(WorkspaceHeaderButtonStyle())
 

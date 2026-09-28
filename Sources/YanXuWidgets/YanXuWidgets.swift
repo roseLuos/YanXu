@@ -138,7 +138,7 @@ private struct DeadlineWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            WidgetHeader(title: "最近 DDL", icon: "timer")
+            WidgetHeader(title: "里程碑", icon: "flag.fill")
             ForEach(entry.snapshot.deadlines.prefix(4)) { deadline in
                 HStack(spacing: 8) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -178,7 +178,8 @@ private struct DeadlineWidgetView: View {
             from: calendar.startOfDay(for: entry.date),
             to: calendar.startOfDay(for: date)
         ).day ?? 0
-        return days == 0 ? "今天" : "\(days)天"
+        if days == 0 { return "今天" }
+        return days < 0 ? "已经\(abs(days))天" : "还有\(days)天"
     }
 }
 
@@ -215,8 +216,8 @@ private struct DeadlinePlanWidget: Widget {
         StaticConfiguration(kind: kind, provider: YanXuWidgetProvider()) { entry in
             DeadlineWidgetView(entry: entry)
         }
-        .configurationDisplayName("最近 DDL")
-        .description("显示最近的个人和 CCFDDL 截止日期。")
+        .configurationDisplayName("里程碑")
+        .description("显示 DDL、CCFDDL 与正向里程碑。")
         .supportedFamilies([.systemMedium])
     }
 }

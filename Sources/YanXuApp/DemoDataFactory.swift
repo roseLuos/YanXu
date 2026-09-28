@@ -43,10 +43,12 @@ enum DemoDataFactory {
         result.tasks.append(contentsOf: demoTasks.filter { !existingTaskIDs.contains($0.id) })
 
         let demoDeadlines: [DeadlineItem] = [
+            DeadlineItem(id: identifier(2000), title: "开题报告提交", dueDate: date(-3), includesTime: false, createdAt: date(-10)),
             DeadlineItem(id: identifier(2001), title: "论文初稿交给导师", dueDate: date(12), includesTime: false, createdAt: date(-4)),
             DeadlineItem(id: identifier(2002), title: "数据集申请截止", dueDate: date(18), includesTime: false, createdAt: date(-3)),
             DeadlineItem(id: identifier(2003), title: "补充实验全部完成", dueDate: date(27), includesTime: false, createdAt: date(-2)),
-            DeadlineItem(id: identifier(2004), title: "博士中期考核材料", dueDate: date(45), includesTime: false, createdAt: date(-1))
+            DeadlineItem(id: identifier(2004), title: "博士中期考核材料", dueDate: date(45), includesTime: false, createdAt: date(-1)),
+            DeadlineItem(id: identifier(2005), title: "开始规律运动", dueDate: date(-42), includesTime: false, createdAt: date(-42), kind: .milestone)
         ]
         let existingDeadlineIDs = Set(result.deadlines.map(\.id))
         result.deadlines.append(contentsOf: demoDeadlines.filter { !existingDeadlineIDs.contains($0.id) })

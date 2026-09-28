@@ -7,24 +7,35 @@ struct DeadlineBoardView: View {
 
     @State private var editingDeadline: DeadlineItem?
     @State private var showsNewDeadline = false
-    @State private var showsArchive = false
+    @State private var newDeadlineKind: DeadlineKind = .deadline
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("DDL")
+                    Text("里程碑")
                         .font(.system(size: 19, weight: .semibold))
                         .foregroundStyle(Color.yanxuInk)
-                    Text("我的 DDL 与 CCF A 人工智能会议")
+                    Text("DDL、正向里程碑与 CCF A 人工智能会议")
                         .font(.caption)
                         .foregroundStyle(Color.yanxuMuted)
                 }
                 Spacer()
-                Button {
-                    showsNewDeadline = true
+                Menu {
+                    Button {
+                        newDeadlineKind = .deadline
+                        showsNewDeadline = true
+                    } label: {
+                        Label("添加 DDL", systemImage: "timer")
+                    }
+                    Button {
+                        newDeadlineKind = .milestone
+                        showsNewDeadline = true
+                    } label: {
+                        Label("添加正向里程碑", systemImage: "flag.fill")
+                    }
                 } label: {
-                    Label("添加 DDL", systemImage: "plus")
+                    Label("添加", systemImage: "plus")
                 }
                 .buttonStyle(PrimaryActionStyle())
             }
@@ -35,19 +46,20 @@ struct DeadlineBoardView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    PageSectionHeader(title: "我的 DDL", detail: "\(store.activeDeadlines.count) 个进行中")
+                    PageSectionHeader(title: "我的里程碑", detail: "\(store.personalMilestoneItems.count) 个")
 
-                if store.activeDeadlines.isEmpty {
+                if store.personalMilestoneItems.isEmpty {
                     SurfaceCard {
-                        EmptyState(icon: "timer", title: "还没有 DDL", message: "添加截止日期后，会按照剩余天数排列。")
+                        EmptyState(icon: "flag", title: "还没有里程碑", message: "添加 DDL 倒计时，或记录一件已经坚持多久的事。")
                     }
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
-                        ForEach(store.activeDeadlines) { deadline in
+                        ForEach(store.personalMilestoneItems) { deadline in
                             DeadlineLargeCard(deadline: deadline)
                                 .onTapGesture { editingDeadline = deadline }
                                 .contextMenu {
                                     Button("编辑") { editingDeadline = deadline }
+                                    Button("忽略") { store.ignoreDeadline(id: deadline.id) }
                                     Button("删除", role: .destructive) { store.deleteDeadline(id: deadline.id) }
                                 }
                         }
@@ -81,7 +93,7 @@ struct DeadlineBoardView: View {
                         .disabled(store.ccfDeadlineLoadState == .loading)
                     }
 
-                    if store.upcomingCCFDeadlines.isEmpty {
+                    if store.displayedCCFDeadlines.isEmpty {
                         SurfaceCard {
                             if store.ccfDeadlineLoadState == .loading {
                                 HStack(spacing: 9) {
@@ -100,8 +112,11 @@ struct DeadlineBoardView: View {
                         }
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 12)], spacing: 12) {
-                            ForEach(store.upcomingCCFDeadlines) { deadline in
+                            ForEach(store.displayedCCFDeadlines) { deadline in
                                 CCFDeadlineLargeCard(deadline: deadline)
+                                    .contextMenu {
+                                        Button("忽略") { store.ignoreCCFDeadline(id: deadline.id) }
+                                    }
                             }
                         }
                     }
@@ -112,43 +127,6 @@ struct DeadlineBoardView: View {
                 }
                 .padding(.top, 4)
 
-                if !store.archivedDeadlines.isEmpty {
-                    DisclosureGroup(isExpanded: $showsArchive) {
-                        SurfaceCard {
-                            VStack(spacing: 0) {
-                                ForEach(Array(store.archivedDeadlines.enumerated()), id: \.element.id) { index, deadline in
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 3) {
-                                            Text(deadline.title)
-                                                .foregroundStyle(Color.yanxuInk)
-                                            Text(deadline.includesTime ? Formatters.dateTime.string(from: deadline.dueDate) : Formatters.shortDate.string(from: deadline.dueDate))
-                                                .font(.caption)
-                                                .foregroundStyle(Color.yanxuMuted)
-                                        }
-                                        Spacer()
-                                        Text("已结束")
-                                            .font(.caption)
-                                            .foregroundStyle(Color.yanxuMuted)
-                                    }
-                                    .padding(.vertical, 9)
-                                    .contextMenu {
-                                        Button("编辑") { editingDeadline = deadline }
-                                        Button("删除", role: .destructive) { store.deleteDeadline(id: deadline.id) }
-                                    }
-                                    if index < store.archivedDeadlines.count - 1 {
-                                        Divider().foregroundStyle(Color.yanxuBorder)
-                                    }
-                                }
-                            }
-                            }
-                            .padding(.top, 6)
-                    } label: {
-                        Text("已归档 · \(store.archivedDeadlines.count)")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.yanxuMuted)
-                    }
-                    .tint(Color.yanxuMuted)
-                }
             }
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -156,7 +134,7 @@ struct DeadlineBoardView: View {
         }
         .background(Color.yanxuCanvas)
         .sheet(isPresented: $showsNewDeadline) {
-            DeadlineEditorView()
+            DeadlineEditorView(kind: newDeadlineKind)
                 .environmentObject(store)
         }
         .sheet(item: $editingDeadline) { deadline in
@@ -196,7 +174,7 @@ private struct DeadlineLargeCard: View {
 
         HStack(spacing: 14) {
             HStack {
-                Image(systemName: "timer")
+                Image(systemName: deadline.kind == .milestone ? "flag.fill" : "timer")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Color.yanxuAccentStrong)
                     .frame(width: 29, height: 29)
@@ -211,20 +189,16 @@ private struct DeadlineLargeCard: View {
                 Text(deadline.includesTime ? Formatters.dateTime.string(from: deadline.dueDate) : Formatters.shortDate.string(from: deadline.dueDate))
                     .font(.caption)
                     .foregroundStyle(Color.yanxuMuted)
+                if deadline.kind == .milestone {
+                    Text("正向里程碑")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Color.yanxuAccentStrong)
+                }
             }
 
             Spacer(minLength: 10)
 
-            HStack(alignment: .lastTextBaseline, spacing: 5) {
-                Text(days == 0 ? "今天" : "\(days)")
-                    .font(.system(size: days == 0 ? 18 : 28, weight: .semibold))
-                    .foregroundStyle(Color.yanxuAccentStrong)
-                if days != 0 {
-                    Text("天")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.yanxuAccent)
-                }
-            }
+            RelativeDayCount(days: days, large: true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
@@ -276,16 +250,7 @@ private struct CCFDeadlineLargeCard: View {
 
             Spacer(minLength: 10)
 
-            HStack(alignment: .lastTextBaseline, spacing: 5) {
-                Text(days == 0 ? "今天" : "\(days)")
-                    .font(.system(size: days == 0 ? 18 : 28, weight: .semibold))
-                    .foregroundStyle(Color.yanxuAccentStrong)
-                if days != 0 {
-                    Text("天")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.yanxuAccent)
-                }
-            }
+            RelativeDayCount(days: days, large: true)
         }
         .padding(14)
         .frame(maxWidth: .infinity, minHeight: 88, alignment: .leading)
@@ -304,15 +269,42 @@ private struct CCFDeadlineLargeCard: View {
     }
 }
 
+private struct RelativeDayCount: View {
+    let days: Int
+    var large = false
+
+    var body: some View {
+        if days == 0 {
+            Text("今天")
+                .font(.system(size: large ? 18 : 16, weight: .semibold))
+                .foregroundStyle(Color.yanxuAccentStrong)
+        } else {
+            HStack(alignment: .lastTextBaseline, spacing: large ? 5 : 3) {
+                Text(days < 0 ? "已经" : "还有")
+                    .font(.system(size: large ? 12 : 10, weight: .medium))
+                    .foregroundStyle(Color.yanxuMuted)
+                Text("\(abs(days))")
+                    .font(.system(size: large ? 28 : 23, weight: .semibold))
+                    .foregroundStyle(Color.yanxuAccentStrong)
+                Text("天")
+                    .font(.system(size: large ? 14 : 11, weight: .medium))
+                    .foregroundStyle(Color.yanxuAccent)
+            }
+        }
+    }
+}
+
 private struct DeadlineEditorView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var draft: DeadlineItem
 
-    init(deadline: DeadlineItem? = nil) {
-        let initialDate = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
-        _draft = State(initialValue: deadline ?? DeadlineItem(title: "", dueDate: initialDate))
+    init(deadline: DeadlineItem? = nil, kind: DeadlineKind = .deadline) {
+        let initialDate = kind == .deadline
+            ? (Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date())
+            : Date()
+        _draft = State(initialValue: deadline ?? DeadlineItem(title: "", dueDate: initialDate, kind: kind))
     }
 
     private var isEditing: Bool { store.data.deadlines.contains(where: { $0.id == draft.id }) }
@@ -322,11 +314,11 @@ private struct DeadlineEditorView: View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("COUNTDOWN")
+                    Text(draft.kind == .deadline ? "COUNTDOWN" : "COUNT UP")
                         .font(.system(size: 9, weight: .medium))
                         .tracking(2)
                         .foregroundStyle(Color.yanxuAccent)
-                    Text(isEditing ? "编辑 DDL" : "新增 DDL")
+                    Text(isEditing ? "编辑\(draft.kind.title)" : "新增\(draft.kind.title)")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Color.yanxuInk)
                 }
@@ -342,51 +334,65 @@ private struct DeadlineEditorView: View {
             }
 
             VStack(alignment: .leading, spacing: 17) {
-                Text("DDL 名称")
+                Picker("类型", selection: $draft.kind) {
+                    ForEach(DeadlineKind.allCases) { kind in
+                        Text(kind.title).tag(kind)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(draft.kind == .deadline ? "DDL 名称" : "里程碑名称")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Color.yanxuMuted)
-                TextField("例如：提交论文初稿", text: $draft.title)
+                TextField(draft.kind == .deadline ? "例如：提交论文初稿" : "例如：开始减肥", text: $draft.title)
                     .editorField()
 
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("具体时间")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(Color.yanxuInk)
-                        Text("关闭时只计算到日期")
-                            .font(.caption)
-                            .foregroundStyle(Color.yanxuMuted)
+                if draft.kind == .deadline {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("具体时间")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(Color.yanxuInk)
+                            Text("关闭时只计算到日期")
+                                .font(.caption)
+                                .foregroundStyle(Color.yanxuMuted)
+                        }
+                        Spacer()
+                        Toggle("包含具体时间", isOn: $draft.includesTime)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .tint(Color.yanxuAccent)
                     }
-                    Spacer()
-                    Toggle("包含具体时间", isOn: $draft.includesTime)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .tint(Color.yanxuAccent)
+                    .padding(14)
+                    .background(Color.yanxuRaised, in: RoundedRectangle(cornerRadius: 11))
                 }
-                .padding(14)
-                .background(Color.yanxuRaised, in: RoundedRectangle(cornerRadius: 11))
 
                 HStack {
-                    Text("截止时间")
+                    Text(draft.kind == .deadline ? "截止时间" : "起始日期")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(Color.yanxuInk)
                     Spacer()
                     DatePicker(
-                        "截止时间",
+                        draft.kind == .deadline ? "截止时间" : "起始日期",
                         selection: $draft.dueDate,
-                        displayedComponents: draft.includesTime ? [.date, .hourAndMinute] : [.date]
+                        displayedComponents: draft.kind == .deadline && draft.includesTime ? [.date, .hourAndMinute] : [.date]
                     )
                     .labelsHidden()
                 }
                 .padding(14)
                 .background(Color.yanxuRaised, in: RoundedRectangle(cornerRadius: 11))
 
-                Label("DDL 仅展示倒计时，不发送提醒。", systemImage: "bell.slash")
+                Label(
+                    draft.kind == .deadline
+                        ? "日期过去后会继续显示“已经 X 天”，可右键忽略。"
+                        : "从起始日期计算已经坚持的天数。",
+                    systemImage: draft.kind == .deadline ? "timer" : "flag.fill"
+                )
                     .font(.caption)
                     .foregroundStyle(Color.yanxuMuted)
 
                 Button(action: save) {
-                    Text(isEditing ? "保存修改" : "创建 DDL")
+                    Text(isEditing ? "保存修改" : "创建\(draft.kind.title)")
                         .frame(maxWidth: .infinity)
                 }
                     .buttonStyle(PrimaryActionStyle())
@@ -397,12 +403,15 @@ private struct DeadlineEditorView: View {
             .padding(.top, 22)
         }
         .padding(26)
-        .frame(width: 460, height: 460, alignment: .top)
+        .frame(width: 460, height: 520, alignment: .top)
         .background(Color.yanxuCard)
     }
 
     private func save() {
         draft.title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if draft.kind == .milestone {
+            draft.includesTime = false
+        }
         if !draft.includesTime {
             draft.dueDate = store.calendar.startOfDay(for: draft.dueDate)
         }

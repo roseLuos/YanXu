@@ -53,6 +53,17 @@ check(
 
 let deadline = DeadlineItem(title: "投稿", dueDate: date(2026, 9, 16))
 check(deadline.remainingDays(from: date(2026, 9, 4), calendar: calendar) == 12, "DDL 应按自然日计算")
+let milestone = DeadlineItem(title: "开始规律运动", dueDate: date(2026, 8, 1), kind: .milestone)
+check(milestone.remainingDays(from: date(2026, 9, 4), calendar: calendar) == -34, "正向里程碑应保留已经过去的天数")
+
+var legacyDeadlineJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(deadline)) as! [String: Any]
+legacyDeadlineJSON.removeValue(forKey: "kind")
+legacyDeadlineJSON.removeValue(forKey: "isIgnored")
+let decodedLegacyDeadline = try JSONDecoder().decode(
+    DeadlineItem.self,
+    from: JSONSerialization.data(withJSONObject: legacyDeadlineJSON)
+)
+check(decodedLegacyDeadline.kind == .deadline && !decodedLegacyDeadline.isIgnored, "旧版 DDL 数据应兼容为未忽略的倒计时")
 
 let tomorrowTask = QuickTaskParser.parse("明天晚上开会", now: date(2026, 9, 4, 10), calendar: calendar)
 check(tomorrowTask.title == "晚上开会", "自然语言日期应从任务标题中移除")

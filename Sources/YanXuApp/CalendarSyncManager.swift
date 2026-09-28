@@ -354,6 +354,7 @@ final class CalendarSyncManager: ObservableObject {
         }
 
         for deadline in data.deadlines {
+            guard deadline.kind == .deadline, !deadline.isIgnored else { continue }
             let key = "deadline-\(deadline.id.uuidString)"
             let startDate = deadline.includesTime ? deadline.dueDate : calendar.startOfDay(for: deadline.dueDate)
             let endDate = deadline.includesTime
