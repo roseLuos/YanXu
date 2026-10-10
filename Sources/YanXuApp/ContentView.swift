@@ -4,12 +4,10 @@ import YanXuCore
 
 struct ContentView: View {
     @EnvironmentObject private var store: AppStore
-    @ObservedObject private var calendarSync = CalendarSyncManager.shared
 
     @State private var showsTaskEditor: Bool
     @State private var showsDeadlineManager = false
     @State private var showsRecords = false
-    @State private var showsCalendarSync = false
 
     init() {
 #if DEBUG
@@ -17,7 +15,6 @@ struct ContentView: View {
         _showsTaskEditor = State(initialValue: environment["YANXU_PREVIEW_TASK_EDITOR"] == "1")
         _showsDeadlineManager = State(initialValue: environment["YANXU_PREVIEW_PANEL"] == "deadlines")
         _showsRecords = State(initialValue: environment["YANXU_PREVIEW_PANEL"] == "records")
-        _showsCalendarSync = State(initialValue: environment["YANXU_PREVIEW_PANEL"] == "calendar-sync")
 #else
         _showsTaskEditor = State(initialValue: false)
 #endif
@@ -26,7 +23,6 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             WorkspaceTopBar(
-                onManageCalendarSync: { showsCalendarSync = true },
                 onManageDeadlines: { showsDeadlineManager = true },
                 onShowRecords: { showsRecords = true }
             )
@@ -51,10 +47,6 @@ struct ContentView: View {
             }
             .environmentObject(store)
         }
-        .sheet(isPresented: $showsCalendarSync) {
-            CalendarSyncSheet(calendarSync: calendarSync)
-                .environmentObject(store)
-        }
         .sheet(isPresented: $showsRecords) {
             WorkspaceManagementSheet(title: "详细数据与记录") {
                 RecordsView()
@@ -78,10 +70,7 @@ struct ContentView: View {
 
 private struct WorkspaceTopBar: View {
     @EnvironmentObject private var store: AppStore
-    @ObservedObject private var calendarSync = CalendarSyncManager.shared
-    @ObservedObject private var researchIsland = ResearchIslandCoordinator.shared
 
-    let onManageCalendarSync: () -> Void
     let onManageDeadlines: () -> Void
     let onShowRecords: () -> Void
 
@@ -111,28 +100,6 @@ private struct WorkspaceTopBar: View {
                 .onTapGesture(count: 2, perform: WorkspaceWindowSizing.toggle)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            Button {
-                if researchIsland.isVisible {
-                    researchIsland.hide()
-                } else {
-                    researchIsland.show(store: store)
-                }
-            } label: {
-                Label(
-                    researchIsland.isVisible ? "隐藏灵动岛" : "显示灵动岛",
-                    systemImage: researchIsland.isVisible ? "capsule.fill" : "capsule"
-                )
-            }
-            .buttonStyle(WorkspaceHeaderButtonStyle())
-
-            Button(action: onManageCalendarSync) {
-                Label(
-                    calendarSync.isEnabled ? "手机日历 · 已开启" : "手机日历",
-                    systemImage: calendarSync.isEnabled ? "calendar.badge.checkmark" : "calendar.badge.plus"
-                )
-            }
-            .buttonStyle(WorkspaceHeaderButtonStyle())
-
             Button(action: onManageDeadlines) {
                 Label("里程碑 · \(store.deadlinePreviews.count)", systemImage: "flag.fill")
             }
@@ -140,6 +107,11 @@ private struct WorkspaceTopBar: View {
 
             Button(action: onShowRecords) {
                 Label("详细记录", systemImage: "chart.bar.xaxis")
+            }
+            .buttonStyle(WorkspaceHeaderButtonStyle())
+
+            SettingsLink {
+                Label("设置", systemImage: "gearshape")
             }
             .buttonStyle(WorkspaceHeaderButtonStyle())
         }
@@ -239,10 +211,9 @@ private struct WeeklyResearchCard: View {
             .compactMap(\.leftAt)
             .filter(interval.contains)
             .max { clockTimeValue($0) < clockTimeValue($1) }
-        let longestSession = overlappingSessions.max {
-            $0.overlap(with: interval, now: now) < $1.overlap(with: interval, now: now)
-        }
-        let longestDuration = longestSession?.overlap(with: interval, now: now)
+        let dailyResearch = dailyResearchDurations(in: interval, now: now)
+        let researchDays = dailyResearch.filter { $0.duration > 0 }.count
+        let longestDay = dailyResearch.max { $0.duration < $1.duration }
 
         DashboardCard(title: "本周科研时长", icon: "clock.fill", tint: .yanxuAccent) {
             VStack(alignment: .leading, spacing: 8) {
@@ -282,11 +253,19 @@ private struct WeeklyResearchCard: View {
                         date: latestDeparture
                     )
                     boundaryMetric(
-                        title: "最长单次",
-                        value: longestDuration.map(compactDuration) ?? "—",
+                        title: "最长时长",
+                        value: longestDay.map { compactDuration($0.duration) } ?? "—",
                         icon: "timer",
                         iconTint: .yanxuSuccess,
-                        date: longestSession?.arrivedAt
+                        date: longestDay?.date
+                    )
+                    boundaryMetric(
+                        title: "打卡天数",
+                        value: "\(researchDays)天",
+                        icon: "calendar.badge.checkmark",
+                        iconTint: .yanxuAccent,
+                        date: nil,
+                        helpText: "本周共有 \(researchDays) 个科研打卡日"
                     )
                 }
             }
@@ -298,7 +277,8 @@ private struct WeeklyResearchCard: View {
         value: String,
         icon: String,
         iconTint: Color,
-        date: Date?
+        date: Date?,
+        helpText: String? = nil
     ) -> some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
@@ -325,7 +305,7 @@ private struct WeeklyResearchCard: View {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
                 .stroke(Color.yanxuBorder, lineWidth: 0.8)
         }
-        .help(date.map(Formatters.dateTime.string) ?? "本周暂无记录")
+        .help(helpText ?? date.map(Formatters.dateTime.string) ?? "本周暂无记录")
     }
 
     private func compactDuration(_ duration: TimeInterval) -> String {
@@ -336,6 +316,24 @@ private struct WeeklyResearchCard: View {
             return minutes == 0 ? "\(hours)时" : "\(hours)时\(minutes)分"
         }
         return "\(minutes)分"
+    }
+
+    private func dailyResearchDurations(in interval: DateInterval, now: Date) -> [(date: Date, duration: TimeInterval)] {
+        var dayStart = store.calendar.startOfDay(for: interval.start)
+        var result: [(date: Date, duration: TimeInterval)] = []
+
+        while dayStart < interval.end {
+            guard let nextDay = store.calendar.date(byAdding: .day, value: 1, to: dayStart) else { break }
+            let dayInterval = DateInterval(
+                start: max(dayStart, interval.start),
+                end: min(nextDay, interval.end)
+            )
+            let duration = store.attendanceDuration(in: dayInterval, now: now)
+            result.append((dayStart, duration))
+            dayStart = nextDay
+        }
+
+        return result
     }
 
     private func clockTimeValue(_ date: Date) -> Int {
@@ -498,139 +496,5 @@ private struct WorkspaceManagementSheet<Content: View>: View {
         }
         .frame(minWidth: 980, minHeight: 680)
         .background(Color.yanxuCanvas)
-    }
-}
-
-private struct CalendarSyncSheet: View {
-    @EnvironmentObject private var store: AppStore
-    @Environment(\.dismiss) private var dismiss
-    @ObservedObject var calendarSync: CalendarSyncManager
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("手机日历")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.yanxuInk)
-                Spacer()
-                Button("完成") { dismiss() }
-                    .buttonStyle(QuietActionStyle())
-                    .keyboardShortcut(.cancelAction)
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 48)
-            .background(Color.yanxuSidebar)
-
-            Rectangle().fill(Color.yanxuBorder).frame(height: 1)
-
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(alignment: .top, spacing: 14) {
-                    Image(systemName: "iphone.and.arrow.forward")
-                        .font(.system(size: 23, weight: .medium))
-                        .foregroundStyle(Color.yanxuAccentStrong)
-                        .frame(width: 46, height: 46)
-                        .background(Color.yanxuAccentSoft, in: RoundedRectangle(cornerRadius: 12))
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("在 iPhone 上查看研序日程")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundStyle(Color.yanxuInk)
-                        Text("研序会把有日期的计划和我的 DDL 单向写入 iCloud 日历，不需要手机 App，也不产生费用。")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.yanxuMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                VStack(spacing: 0) {
-                    syncRow(icon: "checkmark.square", title: "有日期的计划", detail: "具体时间、全天和日期范围")
-                    Divider().foregroundStyle(Color.yanxuBorder)
-                    syncRow(icon: "timer", title: "我的 DDL", detail: "不会同步 CCF A 公共数据")
-                    Divider().foregroundStyle(Color.yanxuBorder)
-                    syncRow(icon: "iphone", title: "手机只查看", detail: "请继续在 Mac 版研序中修改")
-                }
-                .padding(.horizontal, 14)
-                .background(Color.yanxuCard, in: RoundedRectangle(cornerRadius: 10))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 10).stroke(Color.yanxuBorder, lineWidth: 1)
-                }
-
-                HStack(spacing: 9) {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 8, height: 8)
-                    Text(calendarSync.statusText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(statusColor)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    if case .syncing = calendarSync.state {
-                        ProgressView().controlSize(.small)
-                    }
-                }
-                .padding(13)
-                .background(statusColor.opacity(0.07), in: RoundedRectangle(cornerRadius: 9))
-
-                if calendarSync.isEnabled {
-                    HStack(spacing: 10) {
-                        Button {
-                            Task { await calendarSync.synchronizeNow() }
-                        } label: {
-                            Label("立即同步", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                        .buttonStyle(PrimaryActionStyle())
-                        .disabled(calendarSync.state == .syncing)
-
-                        Button("暂停同步") {
-                            calendarSync.disable()
-                        }
-                        .buttonStyle(SecondaryActionStyle())
-                    }
-                } else {
-                    Button {
-                        Task { await calendarSync.enable(data: store.data) }
-                    } label: {
-                        Label("开启 Apple 日历同步", systemImage: "calendar.badge.plus")
-                    }
-                    .buttonStyle(PrimaryActionStyle())
-                    .disabled(calendarSync.state == .syncing)
-                }
-
-                Text("开启后，请在 iPhone 上确认已启用 iCloud 日历，再把苹果自带的“日历”小组件添加到桌面。暂停同步不会删除已经写入日历的事项。")
-                    .font(.caption2)
-                    .foregroundStyle(Color.yanxuMuted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(22)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .frame(width: 540, height: 500)
-        .background(Color.yanxuCanvas)
-    }
-
-    private var statusColor: Color {
-        switch calendarSync.state {
-        case .ready: return Color.yanxuSuccess
-        case .failed: return Color.yanxuDanger
-        case .syncing: return Color.yanxuAccent
-        case .disabled: return Color.yanxuMuted
-        }
-    }
-
-    private func syncRow(icon: String, title: String, detail: String) -> some View {
-        HStack(spacing: 11) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.yanxuAccent)
-                .frame(width: 22)
-            Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.yanxuInk)
-            Spacer()
-            Text(detail)
-                .font(.caption2)
-                .foregroundStyle(Color.yanxuMuted)
-        }
-        .frame(height: 44)
     }
 }

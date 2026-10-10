@@ -5,8 +5,8 @@ var calendar = Calendar(identifier: .gregorian)
 calendar.timeZone = TimeZone(identifier: "Asia/Shanghai")!
 calendar.firstWeekday = 2
 
-func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0) -> Date {
-    calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour))!
+func date(_ year: Int, _ month: Int, _ day: Int, _ hour: Int = 0, _ minute: Int = 0) -> Date {
+    calendar.date(from: DateComponents(year: year, month: month, day: day, hour: hour, minute: minute))!
 }
 
 func check(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -108,4 +108,19 @@ check(ccfDeadlines[0].title == "ICLR 2027 截稿日期", "CCFDDL 标题应移除
 let localDeadline = calendar.date(from: DateComponents(year: 2026, month: 9, day: 26, hour: 19, minute: 59, second: 59))!
 check(ccfDeadlines[0].dueDate == localDeadline, "CCFDDL AoE 时间应正确换算为本地绝对时间")
 
-print("研序核心逻辑自检通过：任务日期、中文快速输入、重复、多段打卡、DDL 与 CCFDDL 解析均正常。")
+let sharedHabit = Habit(name: "阅读论文", weeklyTarget: 3)
+let macOnlyLog = HabitLog(habitID: sharedHabit.id, timestamp: date(2026, 9, 3, 20))
+let phoneOnlyLog = HabitLog(habitID: sharedHabit.id, timestamp: date(2026, 9, 4, 21))
+let sharedTaskID = UUID()
+let macTask = TodoItem(id: sharedTaskID, title: "修改论文", scheduleKind: .day, start: date(2026, 9, 4))
+var phoneTask = macTask
+phoneTask.completedAt = date(2026, 9, 4, 18)
+let mergedLANData = LANSyncMerge.merge(
+    AppData(tasks: [macTask], habits: [sharedHabit], habitLogs: [macOnlyLog], attendanceSessions: [morning]),
+    AppData(tasks: [phoneTask], habits: [sharedHabit], habitLogs: [phoneOnlyLog], attendanceSessions: [afternoon])
+)
+check(mergedLANData.habitLogs.count == 2, "局域网同步必须保留两端新增的习惯打卡")
+check(mergedLANData.attendanceSessions.count == 2, "局域网同步必须保留两端新增的科研时段")
+check(mergedLANData.tasks.first?.completedAt != nil, "局域网同步必须保留另一端的任务完成状态")
+
+print("研序核心逻辑自检通过：任务日期、中文快速输入、重复、多段打卡、里程碑、DDL、CCFDDL 与局域网数据合并均正常。")

@@ -1,0 +1,431 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000001 /* YanXuIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000101 /* YanXuIOSApp.swift */; };
+		000000000000000000000002 /* MobileAppStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000102 /* MobileAppStore.swift */; };
+		000000000000000000000003 /* MobileRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000103 /* MobileRootView.swift */; };
+		000000000000000000000004 /* MobileDemoData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000104 /* MobileDemoData.swift */; };
+		000000000000000000000005 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000105 /* Models.swift */; };
+		000000000000000000000006 /* QuickTaskParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000106 /* QuickTaskParser.swift */; };
+		000000000000000000000007 /* CCFDeadline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* CCFDeadline.swift */; };
+		000000000000000000000009 /* LANSyncClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000110 /* LANSyncClient.swift */; };
+		000000000000000000000010 /* LanSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000111 /* LanSyncModels.swift */; };
+		000000000000000000000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000112 /* Assets.xcassets */; };
+		000000000000000000000012 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000113 /* WidgetSnapshot.swift */; };
+		000000000000000000000013 /* YanXuWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000114 /* YanXuWidgets.swift */; };
+		000000000000000000000014 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000113 /* WidgetSnapshot.swift */; };
+		000000000000000000000016 /* Models.swift in Widget Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000105 /* Models.swift */; };
+		000000000000000000000017 /* LanSyncModels.swift in Widget Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000111 /* LanSyncModels.swift */; };
+		000000000000000000000015 /* 研序小组件.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 000000000000000000000117 /* 研序小组件.appex */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000101 /* YanXuIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YanXuIOSApp.swift; sourceTree = "<group>"; };
+		000000000000000000000102 /* MobileAppStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileAppStore.swift; sourceTree = "<group>"; };
+		000000000000000000000103 /* MobileRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileRootView.swift; sourceTree = "<group>"; };
+		000000000000000000000104 /* MobileDemoData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MobileDemoData.swift; sourceTree = "<group>"; };
+		000000000000000000000105 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Models.swift; path = ../Sources/YanXuCore/Models.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000106 /* QuickTaskParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickTaskParser.swift; path = ../Sources/YanXuCore/QuickTaskParser.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000107 /* CCFDeadline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CCFDeadline.swift; path = ../Sources/YanXuCore/CCFDeadline.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000109 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		00000000000000000000010A /* 研序.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "研序.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000110 /* LANSyncClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANSyncClient.swift; sourceTree = "<group>"; };
+		000000000000000000000111 /* LanSyncModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LanSyncModels.swift; path = ../Sources/YanXuCore/LanSyncModels.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000112 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000000113 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WidgetSnapshot.swift; path = ../Sources/YanXuCore/WidgetSnapshot.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000114 /* YanXuWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YanXuWidgets.swift; sourceTree = "<group>"; };
+		000000000000000000000115 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000000116 /* YanXuWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YanXuWidgets.entitlements; sourceTree = "<group>"; };
+		000000000000000000000117 /* 研序小组件.appex */ = {isa = PBXFileReference; explicitFileType = wrapper.app-extension; includeInIndex = 0; path = "研序小组件.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000118 /* YanXuIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = YanXuIOS.entitlements; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000302 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000305 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000201 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000202 /* YanXuIOS */,
+				000000000000000000000203 /* YanXuCore */,
+				000000000000000000000205 /* YanXuWidgets */,
+				000000000000000000000204 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000202 /* YanXuIOS */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000101 /* YanXuIOSApp.swift */,
+				000000000000000000000102 /* MobileAppStore.swift */,
+				000000000000000000000103 /* MobileRootView.swift */,
+				000000000000000000000104 /* MobileDemoData.swift */,
+				000000000000000000000110 /* LANSyncClient.swift */,
+				000000000000000000000112 /* Assets.xcassets */,
+				000000000000000000000109 /* Info.plist */,
+				000000000000000000000118 /* YanXuIOS.entitlements */,
+			);
+			path = YanXuIOS;
+			sourceTree = SOURCE_ROOT;
+		};
+		000000000000000000000203 /* YanXuCore */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000105 /* Models.swift */,
+				000000000000000000000106 /* QuickTaskParser.swift */,
+				000000000000000000000107 /* CCFDeadline.swift */,
+				000000000000000000000111 /* LanSyncModels.swift */,
+				000000000000000000000113 /* WidgetSnapshot.swift */,
+			);
+			name = YanXuCore;
+			sourceTree = "<group>";
+		};
+		000000000000000000000205 /* YanXuWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000114 /* YanXuWidgets.swift */,
+				000000000000000000000115 /* Info.plist */,
+				000000000000000000000116 /* YanXuWidgets.entitlements */,
+			);
+			path = YanXuWidgets;
+			sourceTree = SOURCE_ROOT;
+		};
+		000000000000000000000204 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000010A /* 研序.app */,
+				000000000000000000000117 /* 研序小组件.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000401 /* YanXuIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000501 /* Build configuration list for PBXNativeTarget "YanXuIOS" */;
+			buildPhases = (
+				000000000000000000000301 /* Sources */,
+				000000000000000000000302 /* Frameworks */,
+				000000000000000000000303 /* Resources */,
+				000000000000000000000308 /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000000000801 /* PBXTargetDependency */,
+			);
+			name = YanXuIOS;
+			productName = YanXuIOS;
+			productReference = 00000000000000000000010A /* 研序.app */;
+			productType = "com.apple.product-type.application";
+		};
+		000000000000000000000402 /* YanXuWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000503 /* Build configuration list for PBXNativeTarget "YanXuWidgets" */;
+			buildPhases = (
+				000000000000000000000304 /* Sources */,
+				000000000000000000000305 /* Frameworks */,
+				000000000000000000000306 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = YanXuWidgets;
+			productName = YanXuWidgets;
+			productReference = 000000000000000000000117 /* 研序小组件.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000601 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+				000000000000000000000401 = {
+					CreatedOnToolsVersion = 16.2;
+				};
+				000000000000000000000402 = {
+					CreatedOnToolsVersion = 16.2;
+				};
+				};
+			};
+			buildConfigurationList = 000000000000000000000502 /* Build configuration list for PBXProject "YanXuIOS" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				Base,
+			);
+			mainGroup = 000000000000000000000201;
+			productRefGroup = 000000000000000000000204 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000401 /* YanXuIOS */,
+				000000000000000000000402 /* YanXuWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000303 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000011 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000306 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000301 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000001 /* YanXuIOSApp.swift in Sources */,
+				000000000000000000000002 /* MobileAppStore.swift in Sources */,
+				000000000000000000000003 /* MobileRootView.swift in Sources */,
+				000000000000000000000004 /* MobileDemoData.swift in Sources */,
+				000000000000000000000009 /* LANSyncClient.swift in Sources */,
+				000000000000000000000005 /* Models.swift in Sources */,
+				000000000000000000000006 /* QuickTaskParser.swift in Sources */,
+				000000000000000000000007 /* CCFDeadline.swift in Sources */,
+				000000000000000000000010 /* LanSyncModels.swift in Sources */,
+				000000000000000000000012 /* WidgetSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000304 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000013 /* YanXuWidgets.swift in Sources */,
+				000000000000000000000014 /* WidgetSnapshot.swift in Sources */,
+				000000000000000000000016 /* Models.swift in Widget Sources */,
+				000000000000000000000017 /* LanSyncModels.swift in Widget Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		000000000000000000000308 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				000000000000000000000015 /* 研序小组件.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000000000901 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000601 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000402;
+			remoteInfo = YanXuWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		000000000000000000000801 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000402 /* YanXuWidgets */;
+			targetProxy = 000000000000000000000901 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000701 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		000000000000000000000702 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		000000000000000000000703 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = YanXuIOS/YanXuIOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 3QC9633X84;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YanXuIOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shurose.yanxu.ios;
+				PRODUCT_NAME = "研序";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		000000000000000000000704 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = YanXuIOS/YanXuIOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 3QC9633X84;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YanXuIOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shurose.yanxu.ios;
+				PRODUCT_NAME = "研序";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		000000000000000000000705 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = YanXuWidgets/YanXuWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 3QC9633X84;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YanXuWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shurose.yanxu.ios.widgets;
+				PRODUCT_NAME = "研序小组件";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		000000000000000000000706 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = YanXuWidgets/YanXuWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = 3QC9633X84;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = YanXuWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shurose.yanxu.ios.widgets;
+				PRODUCT_NAME = "研序小组件";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000501 /* Build configuration list for PBXNativeTarget "YanXuIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000703 /* Debug */,
+				000000000000000000000704 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000502 /* Build configuration list for PBXProject "YanXuIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000701 /* Debug */,
+				000000000000000000000702 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000503 /* Build configuration list for PBXNativeTarget "YanXuWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000705 /* Debug */,
+				000000000000000000000706 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000601 /* Project object */;
+}

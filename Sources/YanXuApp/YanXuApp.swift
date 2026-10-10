@@ -177,5 +177,10 @@ struct YanXuApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1280, height: 860)
+
+        Settings {
+            YanXuSettingsView()
+                .environmentObject(store)
+        }
     }
 }

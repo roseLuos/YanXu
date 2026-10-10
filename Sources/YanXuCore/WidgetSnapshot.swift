@@ -66,28 +66,37 @@ public struct YanXuWidgetSnapshot: Codable, Hashable, Sendable {
 
 public enum YanXuWidgetSnapshotStore {
     public static var fileURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library", isDirectory: true)
-            .appendingPathComponent("Application Support", isDirectory: true)
+        FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+            .first!
             .appendingPathComponent("YanXu", isDirectory: true)
             .appendingPathComponent("widget-snapshot.json")
     }
 
     public static func load() -> YanXuWidgetSnapshot? {
         guard let data = try? Data(contentsOf: fileURL) else { return nil }
+        return decode(data)
+    }
+
+    public static func save(_ snapshot: YanXuWidgetSnapshot) throws {
+        let data = try encode(snapshot)
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: fileURL, options: .atomic)
+    }
+
+    private static func decode(_ data: Data) -> YanXuWidgetSnapshot? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(YanXuWidgetSnapshot.self, from: data)
     }
 
-    public static func save(_ snapshot: YanXuWidgetSnapshot) throws {
-        try FileManager.default.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
+    private static func encode(_ snapshot: YanXuWidgetSnapshot) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try encoder.encode(snapshot).write(to: fileURL, options: .atomic)
+        return try encoder.encode(snapshot)
     }
 }

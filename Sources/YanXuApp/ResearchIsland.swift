@@ -386,22 +386,8 @@ struct ResearchIslandRootView: View {
             Spacer()
 
             headerMetric(title: "今日科研", value: Formatters.duration(researchDuration), tint: .yanxuSuccess)
+            attendanceActionButton(now: now)
             headerMetric(title: "任务完成", value: "\(progress.completed)/\(progress.total)", tint: .yanxuAccent)
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.22)) {
-                    appearance.toggle()
-                }
-            } label: {
-                Image(systemName: appearance.mode == .dark ? "sun.max.fill" : "moon.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(appearance.mode == .dark ? Color.orange : Color.yanxuAccent)
-                    .frame(width: 28, height: 28)
-                    .background(palette.controlBackground, in: Circle())
-            }
-            .buttonStyle(.plain)
-            .help(appearance.mode == .dark ? "切换到白天模式" : "切换到黑夜模式")
-            .accessibilityLabel(appearance.mode == .dark ? "切换到白天模式" : "切换到黑夜模式")
 
             Button {
                 withAnimation(.spring(response: 0.30, dampingFraction: 0.9)) {
@@ -432,6 +418,41 @@ struct ResearchIslandRootView: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 54)
+    }
+
+    private func attendanceActionButton(now: Date) -> some View {
+        let isActive = store.activeAttendanceSession != nil
+        let tint = isActive ? Color.orange : Color.yanxuSuccess
+
+        return Button {
+            toggleAttendance(at: now)
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: isActive ? "rectangle.portrait.and.arrow.right" : "location.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                Text(isActive ? "离开" : "到达")
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(tint.opacity(0.12), in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(tint.opacity(0.24), lineWidth: 0.7)
+            }
+        }
+        .buttonStyle(.plain)
+        .help(isActive ? "离开实验室并结束本次计时" : "到达实验室并开始科研计时")
+        .accessibilityLabel(isActive ? "科研打卡，离开实验室" : "科研打卡，到达实验室")
+    }
+
+    private func toggleAttendance(at date: Date) {
+        if store.activeAttendanceSession == nil {
+            store.clockIn(at: date)
+        } else {
+            store.clockOut(at: date)
+        }
     }
 
     private var quickTaskInput: some View {
@@ -529,6 +550,9 @@ struct ResearchIslandRootView: View {
         store.occurrences(on: day).sorted { lhs, rhs in
             guard let left = store.task(id: lhs.taskID),
                   let right = store.task(id: rhs.taskID) else { return lhs.taskID.uuidString < rhs.taskID.uuidString }
+            let leftCompleted = left.isCompleted(on: lhs.date, calendar: store.calendar)
+            let rightCompleted = right.isCompleted(on: rhs.date, calendar: store.calendar)
+            if leftCompleted != rightCompleted { return !leftCompleted }
             let leftDate = left.start ?? left.createdAt
             let rightDate = right.start ?? right.createdAt
             if left.scheduleKind == .fixed && right.scheduleKind != .fixed { return true }

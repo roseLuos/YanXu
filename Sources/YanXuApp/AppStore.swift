@@ -116,6 +116,10 @@ final class AppStore: ObservableObject {
             NotificationManager.shared.syncAll(initialData.tasks)
             CalendarSyncManager.shared.appDidLoad(data: initialData)
         }
+        LANSyncServer.shared.configure(
+            snapshot: { [weak self] in self?.data ?? AppData() },
+            apply: { [weak self] incoming in self?.mergeLANData(incoming) }
+        )
     }
 
     // MARK: - Tasks
@@ -530,6 +534,15 @@ final class AppStore: ObservableObject {
 
     func attendanceDuration(in interval: DateInterval, now: Date = Date()) -> TimeInterval {
         data.attendanceSessions.reduce(0) { $0 + $1.overlap(with: interval, now: now) }
+    }
+
+    // MARK: - Local network sync
+
+    var lanSyncPairingCode: String { LANSyncServer.shared.pairingCode }
+    var isLANSyncRunning: Bool { LANSyncServer.shared.isRunning }
+
+    private func mergeLANData(_ incoming: AppData) {
+        data = LANSyncMerge.merge(data, incoming)
     }
 
     // MARK: - Widgets

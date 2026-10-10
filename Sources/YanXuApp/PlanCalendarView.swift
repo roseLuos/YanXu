@@ -530,6 +530,9 @@ private struct WeekDayColumn: View {
     private var occurrences: [TaskOccurrence] {
         store.occurrences(on: day).sorted { lhs, rhs in
             guard let left = store.task(id: lhs.taskID), let right = store.task(id: rhs.taskID) else { return false }
+            let leftCompleted = left.isCompleted(on: lhs.date, calendar: store.calendar)
+            let rightCompleted = right.isCompleted(on: rhs.date, calendar: store.calendar)
+            if leftCompleted != rightCompleted { return !leftCompleted }
             if left.scheduleKind == .fixed && right.scheduleKind != .fixed { return true }
             if left.scheduleKind != .fixed && right.scheduleKind == .fixed { return false }
             if let leftStart = left.start, let rightStart = right.start, left.scheduleKind == .fixed, right.scheduleKind == .fixed {
@@ -764,6 +767,9 @@ private struct MonthDayCell: View {
     private var occurrences: [TaskOccurrence] {
         store.occurrences(on: day).sorted { lhs, rhs in
             guard let left = store.task(id: lhs.taskID), let right = store.task(id: rhs.taskID) else { return false }
+            let leftCompleted = left.isCompleted(on: lhs.date, calendar: store.calendar)
+            let rightCompleted = right.isCompleted(on: rhs.date, calendar: store.calendar)
+            if leftCompleted != rightCompleted { return !leftCompleted }
             if left.scheduleKind == .fixed && right.scheduleKind != .fixed { return true }
             if left.scheduleKind != .fixed && right.scheduleKind == .fixed { return false }
             return left.createdAt < right.createdAt

@@ -4,6 +4,7 @@ dist/
 DerivedData/
 .DS_Store
 *.xcuserstate
+xcuserdata/
 
 # Local user data and backups
 backups/

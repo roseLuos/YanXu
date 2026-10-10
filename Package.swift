@@ -19,7 +19,8 @@ let package = Package(
             name: "YanXuApp",
             dependencies: ["YanXuCore"],
             linkerSettings: [
-                .linkedFramework("EventKit")
+                .linkedFramework("EventKit"),
+                .linkedFramework("Network")
             ]
         ),
         .executableTarget(
