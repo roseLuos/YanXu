@@ -64,7 +64,7 @@ final class AppStore: ObservableObject {
         var calendar = Calendar(identifier: .gregorian)
         calendar.locale = Locale(identifier: "zh_CN")
         calendar.firstWeekday = 2
-        calendar.timeZone = .autoupdatingCurrent
+        calendar.timeZone = TimeZone(identifier: "Asia/Shanghai")!
         return calendar
     }
 
