@@ -4,6 +4,7 @@ enum Formatters {
     static let fullDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "M 月 d 日 EEEE"
         return formatter
     }()
@@ -11,6 +12,7 @@ enum Formatters {
     static let shortDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "M 月 d 日"
         return formatter
     }()
@@ -18,6 +20,7 @@ enum Formatters {
     static let monthTitle: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "yyyy 年 M 月"
         return formatter
     }()
@@ -25,6 +28,7 @@ enum Formatters {
     static let time: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "HH:mm"
         return formatter
     }()
@@ -32,6 +36,7 @@ enum Formatters {
     static let dateTime: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "zh_CN")
+        formatter.timeZone = .autoupdatingCurrent
         formatter.dateFormat = "M月d日 HH:mm"
         return formatter
     }()

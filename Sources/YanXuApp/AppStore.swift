@@ -52,7 +52,7 @@ final class AppStore: ObservableObject {
         UserDefaults.standard.stringArray(forKey: "yanxu.ignored-ccf-deadline-ids") ?? []
     )
 
-    let calendar: Calendar
+    var calendar: Calendar { Self.configuredCalendar() }
     private let fileURL: URL
     private let ccfDeadlineCacheURL: URL
     private let enablesExternalSync: Bool
@@ -60,11 +60,16 @@ final class AppStore: ObservableObject {
     static let ccfDeadlineSourceURL = URL(string: "https://ccfddl.com/conference/deadlines_zh_ccf_A_AI.ics")!
     static let ccfDDLWebsiteURL = URL(string: "https://ccfddl.com/")!
 
+    private static func configuredCalendar() -> Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = Locale(identifier: "zh_CN")
+        calendar.firstWeekday = 2
+        calendar.timeZone = .autoupdatingCurrent
+        return calendar
+    }
+
     init(fileURL: URL? = nil) {
-        var configuredCalendar = Calendar(identifier: .gregorian)
-        configuredCalendar.locale = Locale(identifier: "zh_CN")
-        configuredCalendar.firstWeekday = 2
-        self.calendar = configuredCalendar
+        let configuredCalendar = Self.configuredCalendar()
 
         let resolvedFileURL: URL
         let usesDefaultStorage: Bool
