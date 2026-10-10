@@ -614,11 +614,9 @@ private struct IslandDayColumn: View {
     }
 
     private var weekdayText: String {
-        day.formatted(
-            Date.FormatStyle()
-                .weekday(.abbreviated)
-                .locale(Locale(identifier: "zh_CN"))
-        )
+        let index = max(0, min(6, store.calendar.component(.weekday, from: day) - 1))
+        let symbols = store.calendar.shortWeekdaySymbols
+        return symbols.indices.contains(index) ? symbols[index] : ""
     }
 }
 
